@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server';
  * Edge-compatible middleware — uses JWT only (no Prisma/Node.js APIs)
  * Protects all routes except /login and /api/auth/*
  */
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always allow auth API and static assets
