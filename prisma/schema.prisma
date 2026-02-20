@@ -1,0 +1,189 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("clinic") // admin, clinic, provider, pharmacy
+  clinicId     String?
+  clinicName   String?
+  status       String    @default("active")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+  prescriptions Prescription[]
+  auditLogs    AuditLog[]
+}
+
+model Clinic {
+  id            String           @id @default(cuid())
+  name          String
+  address       String?
+  phone         String?
+  email         String?
+  status        String           @default("active")
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  pharmacies    ClinicPharmacy[]
+  patients      Patient[]
+  prescriptions Prescription[]
+}
+
+model Pharmacy {
+  id                   String           @id @default(cuid())
+  name                 String
+  type                 String           @default("compounding")
+  contactName          String?
+  phone                String?
+  email                String?
+  address              String?
+  status               String           @default("active")
+  supportedMedications String[]         @default([])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  clinics              ClinicPharmacy[]
+  prescriptions        Prescription[]
+}
+
+model ClinicPharmacy {
+  id         String   @id @default(cuid())
+  clinicId   String
+  pharmacyId String
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([clinicId, pharmacyId])
+}
+
+model Patient {
+  id            String         @id @default(cuid())
+  clinicId      String
+  clinicName    String?
+  // PHI — all encrypted with AES-256
+  firstName     String // encrypted
+  lastName      String // encrypted
+  dateOfBirth   String? // encrypted
+  gender        String?
+  phone         String? // encrypted
+  email         String? // encrypted
+  allergies     String? // encrypted JSON array
+  streetAddress String? // encrypted
+  city          String?
+  state         String?
+  zipCode       String? // encrypted
+  consentGiven  Boolean        @default(false)
+  consentDate   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  clinic        Clinic         @relation(fields: [clinicId], references: [id])
+  prescriptions Prescription[]
+}
+
+model Prescription {
+  id                  String               @id @default(cuid())
+  patientId           String
+  clinicId            String
+  clinicName          String?
+  clinicAddress       String?
+  pharmacyId          String?
+  pharmacyName        String? // encrypted
+  patientName         String // non-PHI reference
+  patientDob          String?
+  patientGender       String?
+  patientAllergies    String?
+  // PHI — encrypted
+  medicationName      String? // encrypted
+  medicationStrength  String? // encrypted
+  medicationForm      String?
+  quantity            Int                  @default(1)
+  directions          String? // encrypted
+  refills             Int                  @default(0)
+  writtenDate         String?
+  daw                 Boolean              @default(false)
+  shippingMethod      String               @default("ship_to_patient")
+  // Provider PHI — encrypted
+  providerName        String? // encrypted
+  providerNpi         String? // encrypted
+  providerPhone       String? // encrypted
+  providerDea         String?
+  providerLicense     String?
+  providerPractice    String?
+  providerId          String?
+  amount              Float                @default(0)
+  paymentStatus       String               @default("pending")
+  orderStatus         String               @default("pending")
+  trackingNumber      String?
+  trackingCarrier     String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  patient             Patient              @relation(fields: [patientId], references: [id])
+  clinic              Clinic               @relation(fields: [clinicId], references: [id])
+  pharmacy            Pharmacy?            @relation(fields: [pharmacyId], references: [id])
+  billingTransactions BillingTransaction[]
+  User                User?                @relation(fields: [userId], references: [id])
+  userId              String?
+}
+
+model Provider {
+  id        String   @id @default(cuid())
+  clinicId  String
+  name      String
+  npi       String?
+  license   String?
+  phone     String?
+  practice  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  type        String?
+  description String?
+  price       Float?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  userId            String?
+  userEmail         String
+  userRole          String
+  clinicId          String?
+  actionType        String // CREATE, READ, UPDATE, DELETE
+  resourceType      String // Patient, Prescription, etc.
+  resourceId        String?
+  phiFieldsAccessed String[] @default([])
+  hasPhi            Boolean  @default(false)
+  details           String?
+  createdAt         DateTime @default(now())
+  user              User?    @relation(fields: [userId], references: [id])
+}
+
+model BillingTransaction {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  clinicId       String
+  clinicName     String?
+  type           String       @default("prescription")
+  amount         Float        @default(0)
+  status         String       @default("pending")
+  createdAt      DateTime     @default(now())
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+}
