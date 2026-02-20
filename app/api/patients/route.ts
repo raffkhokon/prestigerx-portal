@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    if (session.user.role !== 'admin') {
+    // Auto-assign clinic from session if not provided
+    if (!body.clinicId && session.user.clinicId) {
       body.clinicId = session.user.clinicId;
       body.clinicName = session.user.clinicName;
     }
