@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth';
+import NextAuth, { type User } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
@@ -11,29 +11,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+      async authorize(credentials): Promise<User | null> {
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        if (!user || user.status !== 'active') {
-          return null;
-        }
+        if (!user || user.status !== 'active') return null;
 
-        const passwordValid = await bcrypt.compare(
+        const valid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
         );
+        if (!valid) return null;
 
-        if (!passwordValid) {
-          return null;
-        }
-
-        // Update last login
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
@@ -44,19 +36,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
-          clinicId: user.clinicId,
-          clinicName: user.clinicName,
-        };
+          clinicId: user.clinicId ?? undefined,
+          clinicName: user.clinicName ?? undefined,
+        } as User;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role;
-        token.clinicId = (user as { clinicId?: string }).clinicId;
-        token.clinicName = (user as { clinicName?: string }).clinicName;
+        token.id = user.id ?? '';
+        token.role = (user as User & { role?: string }).role ?? 'clinic';
+        token.clinicId = (user as User & { clinicId?: string }).clinicId;
+        token.clinicName = (user as User & { clinicName?: string }).clinicName;
       }
       return token;
     },
@@ -70,11 +62,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-  pages: {
-    signIn: '/login',
-  },
+  pages: { signIn: '/login' },
   session: {
     strategy: 'jwt',
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 24 * 60 * 60,
   },
 });

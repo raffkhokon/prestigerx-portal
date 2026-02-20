@@ -133,7 +133,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             </div>
             {isAdmin && (
               <div className="ml-auto">
-                <ShieldCheck className="h-4 w-4 text-blue-400" title="Admin" />
+                <ShieldCheck className="h-4 w-4 text-blue-400" aria-label="Admin" />
               </div>
             )}
           </div>
