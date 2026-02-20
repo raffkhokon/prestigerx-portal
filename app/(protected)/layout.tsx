@@ -94,7 +94,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500">Loading PrestigeRx...</p>
+          <p className="text-slate-500">Loading PrestigeScripts...</p>
         </div>
       </div>
     );
@@ -113,7 +113,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               <Pill className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-white font-bold text-lg leading-tight">PrestigeRx</p>
+              <p className="text-white font-bold text-lg leading-tight">PrestigeScripts</p>
               <p className="text-slate-400 text-xs">Pharmacy Portal</p>
             </div>
           </div>

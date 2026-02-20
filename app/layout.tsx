@@ -3,8 +3,8 @@ import './globals.css';
 import SessionProvider from '@/components/SessionProvider';
 
 export const metadata: Metadata = {
-  title: 'PrestigeRx — Pharmacy Gateway Portal',
-  description: 'HIPAA-compliant pharmacy gateway portal for compounding prescriptions',
+  title: 'PrestigeScripts — Pharmacy Gateway Portal',
+  description: 'HIPAA-compliant pharmacy gateway portal by PrestigeScripts',
 };
 
 export default function RootLayout({

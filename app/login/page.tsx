@@ -89,11 +89,11 @@ export default function LoginPage() {
               <Pill className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white tracking-tight">PrestigeRx</h1>
+              <h1 className="text-3xl font-bold text-white tracking-tight">PrestigeScripts</h1>
               <p className="text-blue-300 text-sm">Pharmacy Gateway Portal</p>
             </div>
           </div>
-          <p className="text-slate-400 text-sm">RX Here LLC — Compounding Pharmacy Network</p>
+          <p className="text-slate-400 text-sm">PrestigeScripts — Compounding Pharmacy Network</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 shadow-2xl">
@@ -107,7 +107,7 @@ export default function LoginPage() {
 
         <div className="text-center mt-6">
           <p className="text-slate-500 text-xs">🔒 HIPAA-compliant. All PHI encrypted with AES-256-GCM.</p>
-          <p className="text-slate-600 text-xs mt-1">© 2026 RX Here LLC. All rights reserved.</p>
+          <p className="text-slate-600 text-xs mt-1">© 2026 PrestigeScripts. All rights reserved.</p>
         </div>
       </div>
     </div>
