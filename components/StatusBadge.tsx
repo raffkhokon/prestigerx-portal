@@ -7,7 +7,14 @@ interface StatusBadgeProps {
   type?: 'order' | 'payment';
 }
 
-const ORDER_STATUS_CONFIG = {
+interface StatusConfig {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+  animate?: boolean;
+}
+
+const ORDER_STATUS_CONFIG: Record<string, StatusConfig> = {
   pending: {
     label: 'Pending',
     icon: Clock,
@@ -36,7 +43,7 @@ const ORDER_STATUS_CONFIG = {
   },
 };
 
-const PAYMENT_STATUS_CONFIG = {
+const PAYMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
   pending: {
     label: 'Payment Pending',
     icon: Clock,
