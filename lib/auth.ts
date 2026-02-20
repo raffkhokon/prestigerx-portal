@@ -13,33 +13,52 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials): Promise<User | null> {
-        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          console.log('[AUTH] Starting authorization...');
+          if (!credentials?.email || !credentials?.password) {
+            console.log('[AUTH] Missing credentials');
+            return null;
+          }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
+          console.log('[AUTH] Looking up user:', credentials.email);
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+          });
 
-        if (!user || user.status !== 'active') return null;
+          if (!user || user.status !== 'active') {
+            console.log('[AUTH] User not found or inactive');
+            return null;
+          }
 
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-        if (!valid) return null;
+          console.log('[AUTH] Verifying password...');
+          const valid = await bcrypt.compare(
+            credentials.password as string,
+            user.passwordHash
+          );
+          if (!valid) {
+            console.log('[AUTH] Invalid password');
+            return null;
+          }
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLoginAt: new Date() },
-        });
+          console.log('[AUTH] Updating lastLoginAt...');
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() },
+          });
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          clinicId: user.clinicId ?? undefined,
-          clinicName: user.clinicName ?? undefined,
-        } as User;
+          console.log('[AUTH] Authorization successful');
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            clinicId: user.clinicId ?? undefined,
+            clinicName: user.clinicName ?? undefined,
+          } as User;
+        } catch (error) {
+          console.error('[AUTH] Authorization error:', error);
+          return null;
+        }
       },
     }),
   ],
