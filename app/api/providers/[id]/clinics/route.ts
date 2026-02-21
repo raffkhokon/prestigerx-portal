@@ -4,24 +4,25 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
+    const { id } = await params;
     
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Providers can only see their own clinics, admins can see anyone's
-    if (session.user.role !== 'admin' && session.user.id !== params.id) {
+    if (session.user.role !== 'admin' && session.user.id !== id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get assigned clinics for this provider
     const providerClinics = await prisma.providerClinic.findMany({
       where: {
-        providerId: params.id,
+        providerId: id,
         status: 'active',
       },
       include: {
@@ -53,10 +54,11 @@ export async function GET(
 // POST - Assign provider to clinic (admin only)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
+    const { id } = await params;
     
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,7 +77,7 @@ export async function POST(
     const existing = await prisma.providerClinic.findUnique({
       where: {
         providerId_clinicId: {
-          providerId: params.id,
+          providerId: id,
           clinicId,
         },
       },
@@ -99,7 +101,7 @@ export async function POST(
     // Create new assignment
     await prisma.providerClinic.create({
       data: {
-        providerId: params.id,
+        providerId: id,
         clinicId,
         status: 'active',
       },
