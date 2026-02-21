@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { encryptPHI, decryptPHI } from '@/lib/encryption';
 import { logPrescriptionAccess } from '@/lib/audit';
+import { isOrderStatus, isPaymentStatus } from '@/lib/statuses';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -74,6 +75,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Enforce clinic ownership
     if (session.user.role !== 'admin' && existing.clinicId !== session.user.clinicId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (body.orderStatus && !isOrderStatus(body.orderStatus)) {
+      return NextResponse.json({ error: 'Invalid order status' }, { status: 400 });
+    }
+
+    if (body.paymentStatus && !isPaymentStatus(body.paymentStatus)) {
+      return NextResponse.json({ error: 'Invalid payment status' }, { status: 400 });
     }
 
     const encrypted = encryptPHI(body, 'prescription');
