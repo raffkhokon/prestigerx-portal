@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import StatusBadge from './StatusBadge';
 import StatusTimeline from './StatusTimeline';
-import { User, Pill, Hospital, Building2, Truck, Calendar, DollarSign, FileText, History } from 'lucide-react';
+import { User, Pill, Hospital, Building2, Truck, Calendar, DollarSign, FileText, History, Edit2, Save, X as XIcon } from 'lucide-react';
 
 interface StatusChange {
   id: string;
@@ -52,6 +53,11 @@ interface PrescriptionDetailsProps {
 }
 
 export default function PrescriptionDetails({ prescription }: PrescriptionDetailsProps) {
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [orderStatus, setOrderStatus] = useState(prescription.orderStatus);
+  const [paymentStatus, setPaymentStatus] = useState(prescription.paymentStatus);
+  const [saving, setSaving] = useState(false);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'long',
@@ -60,6 +66,31 @@ export default function PrescriptionDetails({ prescription }: PrescriptionDetail
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleSaveStatus = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/prescriptions/${prescription.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus, paymentStatus }),
+      });
+      if (res.ok) {
+        setEditingStatus(false);
+        // Optionally trigger a refresh or show success message
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setOrderStatus(prescription.orderStatus);
+    setPaymentStatus(prescription.paymentStatus);
+    setEditingStatus(false);
   };
 
   const Section = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
@@ -87,9 +118,78 @@ export default function PrescriptionDetails({ prescription }: PrescriptionDetail
   return (
     <div className="space-y-6">
       {/* Status Section */}
-      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
-        <StatusBadge status={prescription.orderStatus} type="order" />
-        <StatusBadge status={prescription.paymentStatus} type="payment" />
+      <div className="p-4 bg-slate-50 rounded-lg">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-slate-900">Status</h3>
+          {!editingStatus ? (
+            <button
+              onClick={() => setEditingStatus(true)}
+              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              Edit Status
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSaveStatus}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs rounded-lg font-medium transition"
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Save
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs rounded-lg font-medium transition"
+              >
+                <XIcon className="h-3.5 w-3.5" />
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {editingStatus ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Order Status</label>
+              <select
+                value={orderStatus}
+                onChange={(e) => setOrderStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="pending">Pending</option>
+                <option value="received">Received</option>
+                <option value="processed">Processed</option>
+                <option value="need_clarification">Need Clarification</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Payment Status</label>
+              <select
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="pending">Pending</option>
+                <option value="paid">Payment Successful</option>
+                <option value="failed">Payment Failed</option>
+                <option value="cancelled_by_prescriber">Cancelled by Prescriber</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <StatusBadge status={orderStatus} type="order" />
+            <StatusBadge status={paymentStatus} type="payment" />
+          </div>
+        )}
       </div>
 
       {/* Patient Information */}
@@ -136,7 +236,7 @@ export default function PrescriptionDetails({ prescription }: PrescriptionDetail
       <Section icon={Building2} title="Pharmacy & Shipping">
         <Field label="Pharmacy" value={prescription.pharmacyName} />
         <Field label="Clinic" value={prescription.clinicName} />
-        <Field label="Shipping Method" value={prescription.shippingMethod?.replace('_', ' ')} />
+        <Field label="Shipping Method" value={prescription.shippingMethod?.replace(/_/g, ' ')} />
         {prescription.trackingNumber && (
           <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
