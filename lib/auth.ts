@@ -89,7 +89,7 @@ export const authOptions: NextAuthOptions = {
             license: user.license ?? undefined,
             phone: user.phone ?? undefined,
             practice: user.practice ?? undefined,
-          };
+          } as any;
         } catch (error) {
           console.error('[AUTH] Authorization error:', error);
           return null;
