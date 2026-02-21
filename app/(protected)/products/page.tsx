@@ -6,6 +6,8 @@ import { formatCurrency } from '@/lib/utils';
 
 interface Product {
   id: string;
+  pharmacyId?: string;
+  pharmacy?: { id: string; name: string };
   name: string;
   type?: string;
   description?: string;
@@ -14,7 +16,7 @@ interface Product {
   createdAt: string;
 }
 
-const emptyForm = { name: '', type: '', description: '', price: '', status: 'active' };
+const emptyForm = { pharmacyId: '', name: '', type: '', description: '', price: '', status: 'active' };
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -22,6 +24,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -37,8 +40,16 @@ export default function ProductsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    fetch('/api/pharmacies')
+      .then((res) => res.json())
+      .then((data) => setPharmacies((data.data || []).map((p: any) => ({ id: p.id, name: p.name }))))
+      .catch(() => {});
+  }, []);
+
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name required'); return; }
+    if (!form.pharmacyId) { setErrorMsg('Pharmacy required'); return; }
     setSubmitting(true);
     try {
       const res = await fetch('/api/products', {
@@ -86,11 +97,12 @@ export default function ProductsPage() {
             <div className="flex-1 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Name', 'Type', 'Description', 'Price', 'Status'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
+                  <tr>{['Pharmacy', 'Name', 'Type', 'Description', 'Price', 'Status'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 text-sm text-slate-600">{p.pharmacy?.name || '—'}</td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">{p.name}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 capitalize">{p.type || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{p.description || '—'}</td>
@@ -110,6 +122,13 @@ export default function ProductsPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">Add Product</h2><button onClick={() => setShowForm(false)}><X className="h-5 w-5 text-slate-400" /></button></div>
             <div className="p-5 space-y-4">
+              <div>
+                <label className="field-label">Pharmacy *</label>
+                <select value={form.pharmacyId} onChange={(e) => setForm((f) => ({ ...f, pharmacyId: e.target.value }))} className="field-input">
+                  <option value="">Select pharmacy...</option>
+                  {pharmacies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
               <div><label className="field-label">Name *</label><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="field-input" /></div>
               <div><label className="field-label">Type</label><input value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className="field-input" placeholder="e.g., injection, cream, capsule" /></div>
               <div><label className="field-label">Description</label><textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="field-input resize-none" rows={3} /></div>

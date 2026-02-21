@@ -119,6 +119,11 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
+    // Product is required to ensure pharmacy-specific medication/price selection
+    if (!body.productId) {
+      return NextResponse.json({ error: 'Product selection is required' }, { status: 400 });
+    }
+
     // Auto-assign clinic from session if not provided
     if (!body.clinicId && session.user.clinicId) {
       body.clinicId = session.user.clinicId;

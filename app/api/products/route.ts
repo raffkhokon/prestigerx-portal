@@ -7,8 +7,17 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const { searchParams } = new URL(req.url);
+    const pharmacyId = searchParams.get('pharmacyId');
+
     const products = await prisma.product.findMany({
-      where: { status: 'active' },
+      where: {
+        status: 'active',
+        ...(pharmacyId ? { pharmacyId } : {}),
+      },
+      include: {
+        pharmacy: { select: { id: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -27,13 +36,22 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+
+    if (!body.name || !body.pharmacyId) {
+      return NextResponse.json({ error: 'Name and pharmacy are required' }, { status: 400 });
+    }
+
     const product = await prisma.product.create({
       data: {
+        pharmacyId: body.pharmacyId,
         name: body.name,
         type: body.type,
         description: body.description,
         price: body.price,
         status: body.status || 'active',
+      },
+      include: {
+        pharmacy: { select: { id: true, name: true } },
       },
     });
 
