@@ -15,10 +15,30 @@ interface StatusConfig {
 }
 
 const ORDER_STATUS_CONFIG: Record<string, StatusConfig> = {
+  new: {
+    label: 'New',
+    icon: Clock,
+    className: 'bg-sky-100 text-sky-800 border-sky-200',
+  },
   pending: {
     label: 'Pending',
     icon: Clock,
     className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  },
+  received: {
+    label: 'Received',
+    icon: Package,
+    className: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  },
+  processed: {
+    label: 'Processed',
+    icon: CheckCircle2,
+    className: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+  },
+  need_clarification: {
+    label: 'Need Clarification',
+    icon: Clock,
+    className: 'bg-amber-100 text-amber-800 border-amber-200',
   },
   processing: {
     label: 'Processing',
@@ -50,9 +70,19 @@ const PAYMENT_STATUS_CONFIG: Record<string, StatusConfig> = {
     className: 'bg-orange-100 text-orange-800 border-orange-200',
   },
   paid: {
-    label: 'Paid',
+    label: 'Payment Successful',
     icon: CheckCircle2,
     className: 'bg-green-100 text-green-800 border-green-200',
+  },
+  failed: {
+    label: 'Payment Failed',
+    icon: XCircle,
+    className: 'bg-red-100 text-red-800 border-red-200',
+  },
+  cancelled_by_prescriber: {
+    label: 'Cancelled by Prescriber',
+    icon: XCircle,
+    className: 'bg-rose-100 text-rose-800 border-rose-200',
   },
   cancelled: {
     label: 'Refunded',
@@ -69,7 +99,7 @@ export default function StatusBadge({ status, type = 'order' }: StatusBadgeProps
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
         <Package className="h-3.5 w-3.5" />
-        {status}
+        {status.replace(/_/g, ' ')}
       </span>
     );
   }

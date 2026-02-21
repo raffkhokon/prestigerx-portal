@@ -50,21 +50,13 @@ export async function GET(req: NextRequest) {
       where.shippingMethod = shippingMethod;
     }
 
-    // Search filter (patient name, medication, provider name, prescription ID)
-    if (search) {
-      where.OR = [
-        { patientName: { contains: search, mode: 'insensitive' } },
-        { medicationName: { contains: search, mode: 'insensitive' } },
-        { providerName: { contains: search, mode: 'insensitive' } },
-        { id: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    let decrypted: any[] = [];
+    let total = 0;
 
-    const [prescriptions, total] = await Promise.all([
-      prisma.prescription.findMany({
+    if (search) {
+      // PHI fields are encrypted in DB, so perform search after decryption in app layer
+      const allPrescriptions = await prisma.prescription.findMany({
         where,
-        skip,
-        take: limit,
         orderBy: { [sortBy]: sortOrder as 'asc' | 'desc' },
         include: {
           patient: { select: { id: true, firstName: true, lastName: true } },
@@ -72,17 +64,54 @@ export async function GET(req: NextRequest) {
           clinic: { select: { id: true, name: true } },
           provider: { select: { id: true, name: true, npi: true, phone: true } },
         },
-      }),
-      prisma.prescription.count({ where }),
-    ]);
+      });
 
-    // Decrypt PHI fields
-    const decrypted = prescriptions.map((rx) => ({
-      ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
-      patient: rx.patient
-        ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
-        : null,
-    }));
+      const allDecrypted: any[] = allPrescriptions.map((rx) => ({
+        ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
+        patient: rx.patient
+          ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
+          : null,
+      }));
+
+      const q = search.toLowerCase();
+      const filtered = allDecrypted.filter((rx) => {
+        const patientFullName = `${rx?.patient?.firstName || ''} ${rx?.patient?.lastName || ''}`.trim();
+        return (
+          (rx.patientName || '').toLowerCase().includes(q) ||
+          patientFullName.toLowerCase().includes(q) ||
+          (rx.medicationName || '').toLowerCase().includes(q) ||
+          (rx.providerName || '').toLowerCase().includes(q) ||
+          (rx.id || '').toLowerCase().includes(q)
+        );
+      });
+
+      total = filtered.length;
+      decrypted = filtered.slice(skip, skip + limit);
+    } else {
+      const [prescriptions, count] = await Promise.all([
+        prisma.prescription.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [sortBy]: sortOrder as 'asc' | 'desc' },
+          include: {
+            patient: { select: { id: true, firstName: true, lastName: true } },
+            pharmacy: { select: { id: true, name: true } },
+            clinic: { select: { id: true, name: true } },
+            provider: { select: { id: true, name: true, npi: true, phone: true } },
+          },
+        }),
+        prisma.prescription.count({ where }),
+      ]);
+
+      total = count;
+      decrypted = prescriptions.map((rx) => ({
+        ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
+        patient: rx.patient
+          ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
+          : null,
+      }));
+    }
 
     // Audit log
     await logPrescriptionAccess(
@@ -92,7 +121,7 @@ export async function GET(req: NextRequest) {
       session.user.clinicId,
       'READ',
       undefined,
-      `Listed ${prescriptions.length} prescriptions`
+      `Listed ${decrypted.length} prescriptions`
     );
 
     return NextResponse.json({
