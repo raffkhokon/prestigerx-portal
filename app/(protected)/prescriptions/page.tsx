@@ -6,15 +6,17 @@ import {
   Search,
   FileText,
   ExternalLink,
+  Eye,
+  FileDown,
   MoreVertical,
-  Loader2,
-  X,
-  CheckCircle2,
-  AlertCircle,
+  ChevronDown,
+  Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import PrescriptionDetails from '@/components/PrescriptionDetails';
 import SlideOver from '@/components/SlideOver';
-import StatusBadge from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 
 interface Prescription {
@@ -29,13 +31,10 @@ interface Prescription {
   medicationForm?: string;
   quantity: number;
   refills?: number;
-  writtenDate?: string;
   orderStatus: string;
   paymentStatus: string;
-  pharmacyId?: string;
   pharmacyName?: string;
   clinicName?: string;
-  clinicId?: string;
   amount: number;
   createdAt: string;
   updatedAt: string;
@@ -43,51 +42,51 @@ interface Prescription {
   providerName?: string;
   providerNpi?: string;
   providerPhone?: string;
-  providerDea?: string;
-  providerLicense?: string;
-  providerPractice?: string;
-  providerId?: string;
   shippingMethod?: string;
   trackingNumber?: string;
   trackingCarrier?: string;
   statusHistory?: any[];
 }
 
-const STATUS_FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'new', label: 'New' },
-  { value: 'shipped', label: 'Shipped' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 export default function PrescriptionsPage() {
   const { data: session } = useSession();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [medicationFilter, setMedicationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('');
+  const [shippingFilter, setShippingFilter] = useState('');
+  const [sortColumn, setSortColumn] = useState<string>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
   const [pagination, setPagination] = useState({ page: 1, total: 0, pages: 1 });
 
   const fetchPrescriptions = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '50' });
-      if (statusFilter) params.set('status', statusFilter);
+      const params = new URLSearchParams({ 
+        page: String(page), 
+        limit: '50',
+        sort: sortColumn,
+        order: sortDirection,
+      });
       if (search) params.set('search', search);
+      if (medicationFilter) params.set('medication', medicationFilter);
+      if (statusFilter) params.set('paymentStatus', statusFilter);
+      if (orderStatusFilter) params.set('orderStatus', orderStatusFilter);
+      if (shippingFilter) params.set('shipping', shippingFilter);
       
       const res = await fetch(`/api/prescriptions?${params}`);
       const data = await res.json();
       setPrescriptions(data.data || []);
       setPagination(data.pagination || { page: 1, total: 0, pages: 1 });
     } catch {
-      setErrorMsg('Failed to load prescriptions');
+      // Error handling
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [search, medicationFilter, statusFilter, orderStatusFilter, shippingFilter, sortColumn, sortDirection]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -96,13 +95,27 @@ export default function PrescriptionsPage() {
     return () => clearTimeout(debounce);
   }, [fetchPrescriptions]);
 
-  const formatDate = (dateString: string) => {
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3.5 w-3.5 text-blue-600" />
+      : <ArrowDown className="h-3.5 w-3.5 text-blue-600" />;
+  };
+
+  const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    const dateStr = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return { date: dateStr, time: timeStr };
   };
 
   const getTrackingUrl = (carrier?: string, number?: string) => {
@@ -119,68 +132,84 @@ export default function PrescriptionsPage() {
     <div className="h-full flex flex-col bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              Prescriptions
-            </h1>
-            <p className="text-slate-500 text-sm mt-0.5">
-              {loading ? 'Loading...' : `${pagination.total} total prescriptions`}
-            </p>
+            <h1 className="text-2xl font-bold text-slate-900">PrestigeScripts Prescription History</h1>
+            <p className="text-slate-500 text-sm mt-1">Search your PrestigeScripts prescription records</p>
           </div>
-        </div>
-
-        {/* Success/Error banners */}
-        {successMsg && (
-          <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-2 text-green-800 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
-            {successMsg}
-            <button onClick={() => setSuccessMsg('')} className="ml-auto text-green-600 hover:text-green-800">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-        {errorMsg && (
-          <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2 text-red-800 text-sm">
-            <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-            {errorMsg}
-            <button onClick={() => setErrorMsg('')} className="ml-auto text-red-600 hover:text-red-800">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
-        {/* Status Filter Chips */}
-        <div className="flex items-center gap-3 mb-4">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                statusFilter === filter.value
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-white border border-slate-300 text-slate-700 hover:border-orange-300 hover:bg-orange-50'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
+          <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition">
+            <Download className="h-4 w-4" />
+            Export Data
+          </button>
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by ID, Patient, Clinic, Provider or Medication"
+            placeholder="Search by patient name, medication, provider, or prescription ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-3 mt-4">
+          <FilterDropdown
+            icon="💊"
+            label="Medication"
+            value={medicationFilter}
+            onChange={setMedicationFilter}
+            options={[
+              { value: '', label: 'All Medications' },
+              { value: 'tirzepatide', label: 'Tirzepatide' },
+              { value: 'semaglutide', label: 'Semaglutide' },
+              { value: 'nad', label: 'NAD+' },
+            ]}
+          />
+          <FilterDropdown
+            icon="💳"
+            label="Status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'paid', label: 'Payment Successful' },
+              { value: 'failed', label: 'Failed' },
+            ]}
+          />
+          <FilterDropdown
+            icon="📦"
+            label="Order Status"
+            value={orderStatusFilter}
+            onChange={setOrderStatusFilter}
+            options={[
+              { value: '', label: 'All Orders' },
+              { value: 'new', label: 'New' },
+              { value: 'processing', label: 'Processing' },
+              { value: 'shipped', label: 'Shipped' },
+              { value: 'delivered', label: 'Delivered' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+          />
+          <FilterDropdown
+            icon="🚚"
+            label="Shipping"
+            value={shippingFilter}
+            onChange={setShippingFilter}
+            options={[
+              { value: '', label: 'All Shipping' },
+              { value: 'ship_to_patient', label: 'Ship to Patient' },
+              { value: 'ship_to_clinic', label: 'Ship to Clinic' },
+              { value: 'pickup', label: 'Pickup' },
+            ]}
+          />
+          <div className="ml-auto text-sm text-slate-600">
+            Total: <span className="font-semibold">{pagination.total}</span>
+          </div>
         </div>
       </div>
 
@@ -198,115 +227,140 @@ export default function PrescriptionsPage() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+            <thead className="bg-white border-b border-slate-200 sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Patient
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Medication
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Payment Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Order Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Tracking
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Action
+                <SortableHeader label="Date" column="createdAt" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
+                <SortableHeader label="Patient" column="patientName" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
+                <SortableHeader label="Medication" column="medicationName" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
+                <SortableHeader label="Status" column="paymentStatus" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
+                <SortableHeader label="Order Status" column="orderStatus" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
+                <SortableHeader label="Tracking" column="trackingNumber" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {prescriptions.map((rx) => {
+                const { date, time } = formatDateTime(rx.createdAt);
                 const trackingUrl = getTrackingUrl(rx.trackingCarrier, rx.trackingNumber);
                 
                 return (
                   <tr
                     key={rx.id}
-                    onClick={() => setSelectedRx(rx)}
                     className="hover:bg-slate-50 cursor-pointer transition"
+                    onClick={() => setSelectedRx(rx)}
                   >
                     {/* Date */}
-                    <td className="px-4 py-3 text-sm text-slate-900">
-                      {formatDate(rx.createdAt)}
+                    <td className="px-4 py-4">
+                      <div className="text-sm text-slate-900">{date}</div>
+                      <div className="text-xs text-slate-500">@ {time}</div>
                     </td>
 
                     {/* Patient */}
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-slate-900">
-                        {rx.patientName}
-                      </div>
-                      {rx.clinicName && (
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {rx.clinicName}
-                        </div>
-                      )}
+                    <td className="px-4 py-4">
+                      <div className="text-sm font-medium text-slate-900">{rx.patientName}</div>
+                      <div className="text-xs text-slate-500">patient@email.com</div>
                     </td>
 
                     {/* Medication */}
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-slate-900">
-                        {rx.medicationName || 'N/A'}
+                    <td className="px-4 py-4">
+                      <div className="text-sm font-medium text-slate-900">
+                        {rx.medicationName?.toUpperCase() || 'N/A'}
                       </div>
-                      {rx.medicationStrength && (
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {rx.medicationStrength} • Qty: {rx.quantity}
-                        </div>
-                      )}
+                      <div className="text-xs text-slate-600">
+                        {rx.medicationStrength} {rx.medicationForm && `(${rx.quantity}${rx.medicationForm})`}
+                      </div>
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
+                        {rx.shippingMethod?.replace('_', ' ') || 'Ship to Patient'}
+                      </span>
                     </td>
 
                     {/* Payment Status */}
-                    <td className="px-4 py-3">
-                      <StatusBadge status={rx.paymentStatus} type="payment" />
+                    <td className="px-4 py-4">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                        rx.paymentStatus === 'paid' 
+                          ? 'bg-green-100 text-green-700'
+                          : rx.paymentStatus === 'pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {rx.paymentStatus === 'paid' ? 'Payment Successful' : rx.paymentStatus}
+                      </span>
                     </td>
 
                     {/* Order Status */}
-                    <td className="px-4 py-3">
-                      <StatusBadge status={rx.orderStatus} type="order" />
+                    <td className="px-4 py-4">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        rx.orderStatus === 'shipped' 
+                          ? 'bg-purple-100 text-purple-700'
+                          : rx.orderStatus === 'delivered'
+                          ? 'bg-green-100 text-green-700'
+                          : rx.orderStatus === 'processing'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {rx.orderStatus}
+                      </span>
                     </td>
 
                     {/* Tracking */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       {rx.trackingNumber ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-mono text-slate-700">
-                            {rx.trackingNumber.slice(0, 12)}...
-                          </span>
-                          {trackingUrl && (
-                            <a
-                              href={trackingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-blue-600 hover:text-blue-700"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          )}
+                        <div>
+                          <div className="text-xs text-slate-600 font-semibold">
+                            {rx.trackingCarrier?.toUpperCase() || 'CARRIER'}
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-sm text-blue-600 font-mono">
+                              {rx.trackingNumber}
+                            </span>
+                            {trackingUrl && (
+                              <a
+                                href={trackingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-sm text-slate-400">—</span>
                       )}
                     </td>
 
-                    {/* Action */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedRx(rx);
-                        }}
-                        className="text-slate-400 hover:text-slate-600 transition"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
+                    {/* Actions */}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedRx(rx);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition"
+                          title="Download"
+                        >
+                          <FileDown className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition"
+                          title="More"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -330,11 +384,9 @@ export default function PrescriptionsPage() {
             >
               Previous
             </button>
-            <div className="flex items-center gap-1 px-3">
-              <span className="text-sm text-slate-600">
-                Page {pagination.page} of {pagination.pages}
-              </span>
-            </div>
+            <span className="px-4 py-2 text-sm text-slate-600">
+              Page {pagination.page} of {pagination.pages}
+            </span>
             <button
               onClick={() => fetchPrescriptions(pagination.page + 1)}
               disabled={pagination.page >= pagination.pages}
@@ -346,7 +398,7 @@ export default function PrescriptionsPage() {
         </div>
       )}
 
-      {/* Side Panel for Prescription Details */}
+      {/* Side Panel */}
       {selectedRx && (
         <SlideOver
           isOpen={!!selectedRx}
@@ -357,5 +409,70 @@ export default function PrescriptionsPage() {
         </SlideOver>
       )}
     </div>
+  );
+}
+
+function FilterDropdown({ 
+  icon, 
+  label, 
+  value, 
+  onChange, 
+  options 
+}: { 
+  icon: string; 
+  label: string; 
+  value: string; 
+  onChange: (value: string) => void; 
+  options: Array<{ value: string; label: string }>; 
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pl-8 pr-8 py-2 border border-slate-300 rounded-lg text-sm appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-base pointer-events-none">
+        {icon}
+      </span>
+      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      <span className="absolute left-9 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-600 pointer-events-none">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+  getSortIcon,
+}: {
+  label: string;
+  column: string;
+  sortColumn: string;
+  sortDirection: 'asc' | 'desc';
+  onSort: (column: string) => void;
+  getSortIcon: (column: string) => React.ReactNode;
+}) {
+  return (
+    <th 
+      className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-50 transition select-none"
+      onClick={() => onSort(column)}
+    >
+      <div className="flex items-center gap-1.5">
+        <span>{label}</span>
+        {getSortIcon(column)}
+      </div>
+    </th>
   );
 }
