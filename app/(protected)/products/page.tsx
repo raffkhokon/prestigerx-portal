@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Package, Plus, Search, Loader2, X, CheckCircle2 } from 'lucide-react';
+import { Package, Plus, Search, Loader2, X, CheckCircle2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 interface Product {
@@ -34,6 +34,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -65,14 +66,17 @@ export default function ProductsPage() {
     if (!form.medicationForm) { setErrorMsg('Form required'); return; }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const endpoint = editProductId ? `/api/products/${editProductId}` : '/api/products';
+      const method = editProductId ? 'PUT' : 'POST';
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, price: form.price ? parseFloat(form.price) : null }),
       });
       if (!res.ok) throw new Error();
-      setSuccessMsg('Product added!');
+      setSuccessMsg(editProductId ? 'Product updated!' : 'Product added!');
       setShowForm(false);
+      setEditProductId(null);
       setForm(emptyForm);
       fetchData();
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
@@ -97,7 +101,7 @@ export default function ProductsPage() {
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Package className="h-5 w-5 text-blue-600" />Products</h1>
             <p className="text-slate-500 text-sm mt-0.5">{products.length} products</p>
           </div>
-          <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
+          <button onClick={() => { setEditProductId(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
             <Plus className="h-4 w-4" />Add Product
           </button>
         </div>
@@ -119,7 +123,7 @@ export default function ProductsPage() {
             <div className="flex-1 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Pharmacy', 'Medication', 'Strength', 'Form', 'Description', 'Price', 'Status'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
+                  <tr>{['Pharmacy', 'Medication', 'Strength', 'Form', 'Description', 'Price', 'Status', 'Actions'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => (
@@ -131,6 +135,27 @@ export default function ProductsPage() {
                       <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{p.description || '—'}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">{p.price ? formatCurrency(p.price) : '—'}</td>
                       <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{p.status}</span></td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => {
+                            setEditProductId(p.id);
+                            setForm({
+                              pharmacyId: p.pharmacyId || '',
+                              name: p.name || '',
+                              medicationStrength: p.medicationStrength || '',
+                              medicationForm: p.medicationForm || p.type || 'injection',
+                              type: p.type || p.medicationForm || '',
+                              description: p.description || '',
+                              price: p.price != null ? String(p.price) : '',
+                              status: p.status || 'active',
+                            });
+                            setShowForm(true);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                        >
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -143,7 +168,7 @@ export default function ProductsPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">Add Product</h2><button onClick={() => setShowForm(false)}><X className="h-5 w-5 text-slate-400" /></button></div>
+            <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">{editProductId ? 'Edit Product' : 'Add Product'}</h2><button onClick={() => { setShowForm(false); setEditProductId(null); }}><X className="h-5 w-5 text-slate-400" /></button></div>
             <div className="p-5 space-y-4">
               <div>
                 <label className="field-label">Pharmacy *</label>
@@ -172,8 +197,8 @@ export default function ProductsPage() {
               <div><label className="field-label">Status</label><select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="field-input"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
             </div>
             <div className="p-5 border-t flex gap-3 justify-end">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
-              <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}Add Product</button>
+              <button onClick={() => { setShowForm(false); setEditProductId(null); }} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
+              <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}{editProductId ? 'Update Product' : 'Add Product'}</button>
             </div>
           </div>
         </div>
