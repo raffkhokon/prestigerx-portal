@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import StatusBadge from './StatusBadge';
 import StatusTimeline from './StatusTimeline';
-import { User, Pill, Hospital, Building2, Truck, Calendar, DollarSign, FileText, History, Edit2, Save, X as XIcon } from 'lucide-react';
+import { User, Pill, Hospital, Building2, Truck, Calendar, DollarSign, FileText, History, Edit2, Save, X as XIcon, Loader2 } from 'lucide-react';
 
 interface StatusChange {
   id: string;
