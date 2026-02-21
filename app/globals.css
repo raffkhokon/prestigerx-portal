@@ -30,16 +30,17 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Force dark text in form inputs */
-input,
-textarea,
-select {
-  color: #171717 !important;
+/* Default dark text for form inputs (allows override with text-white, etc.) */
+input:not([class*="text-"]),
+textarea:not([class*="text-"]),
+select:not([class*="text-"]) {
+  color: #171717;
 }
 
+/* Placeholder colors - respects parent text color */
 input::placeholder,
 textarea::placeholder {
-  color: #94a3b8 !important;
+  opacity: 0.6;
 }
 
 /* Scrollbar */
