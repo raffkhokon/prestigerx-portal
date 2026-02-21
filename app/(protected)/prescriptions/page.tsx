@@ -416,13 +416,13 @@ function FilterDropdown({
   
   return (
     <div className="relative inline-block">
-      <label className="absolute -top-2 left-2 px-1 bg-white text-xs font-medium text-slate-600 z-10">
+      <label className="absolute -top-1.5 left-2 px-1 bg-white text-[10px] font-medium text-slate-600 z-10">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-3 pr-9 py-2.5 border border-slate-300 rounded-lg text-sm appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition min-w-[200px]"
+        className="pl-2.5 pr-7 py-1.5 border border-slate-300 rounded text-xs appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition min-w-[180px]"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -430,7 +430,7 @@ function FilterDropdown({
           </option>
         ))}
       </select>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
     </div>
   );
 }
