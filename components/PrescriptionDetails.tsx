@@ -41,6 +41,11 @@ interface PrescriptionDetailsProps {
     pharmacyName?: string;
     clinicName?: string;
     shippingMethod?: string;
+    shippingRecipientName?: string;
+    shippingStreetAddress?: string;
+    shippingCity?: string;
+    shippingState?: string;
+    shippingZipCode?: string;
     trackingNumber?: string;
     trackingCarrier?: string;
     orderStatus: string;
@@ -56,6 +61,13 @@ interface PrescriptionDetailsProps {
 
 export default function PrescriptionDetails({ prescription, onUpdate, readOnly = false }: PrescriptionDetailsProps) {
   const [editingStatus, setEditingStatus] = useState(false);
+
+  const shippingAddress = [
+    prescription.shippingStreetAddress,
+    prescription.shippingCity,
+    prescription.shippingState,
+    prescription.shippingZipCode,
+  ].filter(Boolean).join(', ');
   const [orderStatus, setOrderStatus] = useState(prescription.orderStatus);
   const [paymentStatus, setPaymentStatus] = useState(prescription.paymentStatus);
   const [saving, setSaving] = useState(false);
@@ -262,6 +274,13 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
         <Field label="Pharmacy" value={prescription.pharmacyName} />
         <Field label="Clinic" value={prescription.clinicName} />
         <Field label="Shipping Method" value={prescription.shippingMethod?.replace(/_/g, ' ')} />
+        <Field label="Ship To" value={prescription.shippingRecipientName} />
+        {shippingAddress && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs font-semibold text-amber-800 mb-1">Shipping Address:</p>
+            <p className="text-sm text-amber-700">{shippingAddress}</p>
+          </div>
+        )}
         {prescription.trackingNumber && (
           <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
