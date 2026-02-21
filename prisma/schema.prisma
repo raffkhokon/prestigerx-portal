@@ -16,15 +16,43 @@ model User {
   email        String    @unique
   passwordHash String
   name         String
-  role         String    @default("clinic") // admin, clinic, provider, pharmacy
+  role         String    @default("provider") // admin, provider, clinic (no pharmacy login)
+  status       String    @default("active")
+  
+  // Provider-specific fields (for role=provider)
+  npi          String? // encrypted
+  dea          String?
+  license      String?
+  phone        String? // encrypted
+  practice     String?
+  
+  // Clinic user fields (for role=clinic)
   clinicId     String?
   clinicName   String?
-  status       String    @default("active")
+  
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
-  prescriptions Prescription[]
-  auditLogs    AuditLog[]
+  
+  // Relationships
+  prescriptions Prescription[] @relation("ProviderPrescriptions")
+  clinics       ProviderClinic[] // Many-to-many with clinics (for providers)
+  auditLogs     AuditLog[]
+}
+
+// NEW: Many-to-many relationship between Providers and Clinics
+model ProviderClinic {
+  id         String   @id @default(cuid())
+  providerId String
+  clinicId   String
+  provider   User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  status     String   @default("active") // active, inactive
+  createdAt  DateTime @default(now())
+  
+  @@unique([providerId, clinicId])
+  @@index([providerId])
+  @@index([clinicId])
 }
 
 model Clinic {
@@ -36,6 +64,9 @@ model Clinic {
   status        String           @default("active")
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+  
+  // Relationships
+  providers     ProviderClinic[] // Many-to-many with providers
   pharmacies    ClinicPharmacy[]
   patients      Patient[]
   prescriptions Prescription[]
@@ -51,8 +82,20 @@ model Pharmacy {
   address              String?
   status               String           @default("active")
   supportedMedications String[]         @default([])
+  
+  // API Integration Configuration
+  apiUrl               String? // External pharmacy API endpoint
+  apiKey               String? // Encrypted API key
+  apiEnabled           Boolean          @default(false)
+  
+  // Webhook Configuration
+  webhookUrl           String? // Our webhook endpoint they should call
+  webhookSecret        String? // Secret for HMAC verification
+  
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
+  
+  // Relationships
   clinics              ClinicPharmacy[]
   prescriptions        Prescription[]
 }
@@ -94,17 +137,39 @@ model Patient {
 
 model Prescription {
   id                  String               @id @default(cuid())
+  
+  // Required Relationships
+  providerId          String // REQUIRED: Who created the prescription
+  provider            User                 @relation("ProviderPrescriptions", fields: [providerId], references: [id])
+  
   patientId           String
+  patient             Patient              @relation(fields: [patientId], references: [id])
+  
   clinicId            String
+  clinic              Clinic               @relation(fields: [clinicId], references: [id])
   clinicName          String?
   clinicAddress       String?
-  pharmacyId          String?
+  
+  pharmacyId          String? // Optional: assigned by admin
+  pharmacy            Pharmacy?            @relation(fields: [pharmacyId], references: [id])
   pharmacyName        String? // encrypted
+  
+  // Pharmacy API Integration Fields
+  externalPharmacyId  String? // Pharmacy's internal RX ID
+  apiStatus           String               @default("pending") // pending, sending, sent, failed
+  apiSentAt           DateTime?
+  apiResponse         String?              @db.Text // JSON response log
+  apiError            String?              @db.Text // Error message if failed
+  apiRetryCount       Int                  @default(0)
+  apiLastRetry        DateTime?
+  
+  // Patient Info (denormalized for display)
   patientName         String // non-PHI reference
   patientDob          String?
   patientGender       String?
   patientAllergies    String?
-  // PHI — encrypted
+  
+  // Medication — PHI encrypted
   medicationName      String? // encrypted
   medicationStrength  String? // encrypted
   medicationForm      String?
@@ -114,40 +179,36 @@ model Prescription {
   writtenDate         String?
   daw                 Boolean              @default(false)
   shippingMethod      String               @default("ship_to_patient")
-  // Provider PHI — encrypted
+  
+  // Provider Info — encrypted (denormalized from User)
   providerName        String? // encrypted
   providerNpi         String? // encrypted
   providerPhone       String? // encrypted
   providerDea         String?
   providerLicense     String?
   providerPractice    String?
-  providerId          String?
+  
+  // Billing
   amount              Float                @default(0)
   paymentStatus       String               @default("pending")
-  orderStatus         String               @default("pending")
+  
+  // Order Status
+  orderStatus         String               @default("new") // new, received, processed, shipped, delivered, cancelled
   trackingNumber      String?
   trackingCarrier     String?
+  
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  patient             Patient                     @relation(fields: [patientId], references: [id])
-  clinic              Clinic                      @relation(fields: [clinicId], references: [id])
-  pharmacy            Pharmacy?                   @relation(fields: [pharmacyId], references: [id])
+  
+  // Relationships
   billingTransactions BillingTransaction[]
   statusHistory       PrescriptionStatusHistory[]
-  User                User?                       @relation(fields: [userId], references: [id])
-  userId              String?
-}
-
-model Provider {
-  id        String   @id @default(cuid())
-  clinicId  String
-  name      String
-  npi       String?
-  license   String?
-  phone     String?
-  practice  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  
+  @@index([providerId])
+  @@index([clinicId])
+  @@index([pharmacyId])
+  @@index([apiStatus])
+  @@index([orderStatus])
 }
 
 model Product {
@@ -197,7 +258,7 @@ model PrescriptionStatusHistory {
   newStatus      String
   changedBy      String       // User ID
   changedByName  String       // User display name
-  changedByRole  String       // User role (admin, clinic, pharmacy)
+  changedByRole  String       // User role (admin, provider, clinic)
   notes          String?      // Optional notes about the change
   createdAt      DateTime     @default(now())
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
