@@ -120,17 +120,27 @@ export default function PrescriptionCard({ prescription, onClick }: Prescription
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{createdDate}</span>
-          </div>
-          {prescription.amount > 0 && (
-            <div className="flex items-center gap-1 font-semibold text-slate-900">
-              <DollarSign className="h-3.5 w-3.5" />
-              <span>{prescription.amount.toFixed(2)}</span>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{createdDate}</span>
             </div>
-          )}
+            {prescription.amount > 0 && (
+              <div className="flex items-center gap-1 font-semibold text-slate-900">
+                <DollarSign className="h-3.5 w-3.5" />
+                <span>{prescription.amount.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Prescription ID */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-400 font-mono">ID:</span>
+            <code className="text-slate-600 font-mono bg-slate-50 px-1.5 py-0.5 rounded">
+              {prescription.id.slice(0, 12)}...
+            </code>
+          </div>
         </div>
       </div>
     </div>

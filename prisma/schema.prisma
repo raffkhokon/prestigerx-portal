@@ -129,11 +129,12 @@ model Prescription {
   trackingCarrier     String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  patient             Patient              @relation(fields: [patientId], references: [id])
-  clinic              Clinic               @relation(fields: [clinicId], references: [id])
-  pharmacy            Pharmacy?            @relation(fields: [pharmacyId], references: [id])
+  patient             Patient                     @relation(fields: [patientId], references: [id])
+  clinic              Clinic                      @relation(fields: [clinicId], references: [id])
+  pharmacy            Pharmacy?                   @relation(fields: [pharmacyId], references: [id])
   billingTransactions BillingTransaction[]
-  User                User?                @relation(fields: [userId], references: [id])
+  statusHistory       PrescriptionStatusHistory[]
+  User                User?                       @relation(fields: [userId], references: [id])
   userId              String?
 }
 
@@ -186,4 +187,18 @@ model BillingTransaction {
   status         String       @default("pending")
   createdAt      DateTime     @default(now())
   prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+}
+
+model PrescriptionStatusHistory {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  statusType     String       // "order" or "payment"
+  oldStatus      String?
+  newStatus      String
+  changedBy      String       // User ID
+  changedByName  String       // User display name
+  changedByRole  String       // User role (admin, clinic, pharmacy)
+  notes          String?      // Optional notes about the change
+  createdAt      DateTime     @default(now())
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
 }

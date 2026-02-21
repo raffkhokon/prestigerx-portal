@@ -1,7 +1,20 @@
 'use client';
 
 import StatusBadge from './StatusBadge';
-import { User, Pill, Hospital, Building2, Truck, Calendar, DollarSign, FileText } from 'lucide-react';
+import StatusTimeline from './StatusTimeline';
+import { User, Pill, Hospital, Building2, Truck, Calendar, DollarSign, FileText, History } from 'lucide-react';
+
+interface StatusChange {
+  id: string;
+  statusType: 'order' | 'payment';
+  oldStatus?: string;
+  newStatus: string;
+  changedBy: string;
+  changedByName: string;
+  changedByRole: string;
+  notes?: string;
+  createdAt: string;
+}
 
 interface PrescriptionDetailsProps {
   prescription: {
@@ -34,6 +47,7 @@ interface PrescriptionDetailsProps {
     amount: number;
     createdAt: string;
     updatedAt: string;
+    statusHistory?: StatusChange[];
   };
 }
 
@@ -141,6 +155,13 @@ export default function PrescriptionDetails({ prescription }: PrescriptionDetail
       <Section icon={DollarSign} title="Billing">
         <Field label="Amount" value={`$${prescription.amount.toFixed(2)}`} />
       </Section>
+
+      {/* Status History Timeline */}
+      {prescription.statusHistory && prescription.statusHistory.length > 0 && (
+        <Section icon={History} title="Status History">
+          <StatusTimeline history={prescription.statusHistory} />
+        </Section>
+      )}
 
       {/* Metadata */}
       <Section icon={FileText} title="Record Details">
