@@ -203,7 +203,6 @@ export default function PrescriptionDetails({ prescription, onUpdate }: Prescrip
                 <option value="paid">Payment Successful</option>
                 <option value="failed">Payment Failed</option>
                 <option value="cancelled_by_prescriber">Cancelled by Prescriber</option>
-                <option value="cancelled">Cancelled</option>
               </select>
             </div>
           </div>

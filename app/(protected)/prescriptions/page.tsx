@@ -179,6 +179,7 @@ export default function PrescriptionsPage() {
             options={[
               { value: '', label: 'All Statuses' },
               { value: 'paid', label: 'Payment Successful' },
+              { value: 'pending', label: 'Pending' },
               { value: 'failed', label: 'Payment Failed' },
               { value: 'cancelled_by_prescriber', label: 'Cancelled by Prescriber' },
             ]}
@@ -272,7 +273,11 @@ export default function PrescriptionsPage() {
                           ? 'bg-yellow-100 text-yellow-700'
                           : 'bg-red-100 text-red-700'
                       }`}>
-                        {rx.paymentStatus === 'paid' ? 'Payment Successful' : rx.paymentStatus}
+                        {rx.paymentStatus === 'paid' 
+                          ? 'Payment Successful' 
+                          : rx.paymentStatus === 'cancelled_by_prescriber'
+                          ? 'Cancelled by Prescriber'
+                          : rx.paymentStatus.replace(/_/g, ' ')}
                       </span>
                     </td>
 
