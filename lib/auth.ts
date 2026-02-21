@@ -21,20 +21,6 @@ declare module 'next-auth' {
   }
 }
 
-// Extend AdapterUser from @auth/core/adapters
-declare module '@auth/core/adapters' {
-  interface AdapterUser {
-    role?: string;
-    clinicId?: string;
-    clinicName?: string;
-    npi?: string;
-    dea?: string;
-    license?: string;
-    phone?: string;
-    practice?: string;
-  }
-}
-
 // Extend User interface for custom fields
 interface CustomUser {
   role?: string;
@@ -114,15 +100,17 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Cast to any to access custom fields from Prisma User model
+        const customUser = user as any;
         token.id = user.id ?? '';
-        token.role = user.role ?? 'provider';
-        token.clinicId = user.clinicId;
-        token.clinicName = user.clinicName;
-        token.npi = user.npi;
-        token.dea = user.dea;
-        token.license = user.license;
-        token.phone = user.phone;
-        token.practice = user.practice;
+        token.role = customUser.role ?? 'provider';
+        token.clinicId = customUser.clinicId;
+        token.clinicName = customUser.clinicName;
+        token.npi = customUser.npi;
+        token.dea = customUser.dea;
+        token.license = customUser.license;
+        token.phone = customUser.phone;
+        token.practice = customUser.practice;
       }
       return token;
     },
