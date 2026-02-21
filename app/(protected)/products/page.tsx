@@ -9,6 +9,8 @@ interface Product {
   pharmacyId?: string;
   pharmacy?: { id: string; name: string };
   name: string;
+  medicationStrength?: string;
+  medicationForm?: string;
   type?: string;
   description?: string;
   price?: number;
@@ -16,7 +18,16 @@ interface Product {
   createdAt: string;
 }
 
-const emptyForm = { pharmacyId: '', name: '', type: '', description: '', price: '', status: 'active' };
+const emptyForm = {
+  pharmacyId: '',
+  name: '',
+  medicationStrength: '',
+  medicationForm: 'injection',
+  type: '',
+  description: '',
+  price: '',
+  status: 'active'
+};
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -50,6 +61,8 @@ export default function ProductsPage() {
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name required'); return; }
     if (!form.pharmacyId) { setErrorMsg('Pharmacy required'); return; }
+    if (!form.medicationStrength) { setErrorMsg('Strength required'); return; }
+    if (!form.medicationForm) { setErrorMsg('Form required'); return; }
     setSubmitting(true);
     try {
       const res = await fetch('/api/products', {
@@ -65,7 +78,16 @@ export default function ProductsPage() {
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
   };
 
-  const filtered = products.filter((p) => !search || p.name?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = products.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      p.name?.toLowerCase().includes(q) ||
+      p.medicationStrength?.toLowerCase().includes(q) ||
+      p.medicationForm?.toLowerCase().includes(q) ||
+      p.pharmacy?.name?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="h-full flex flex-col">
@@ -97,14 +119,15 @@ export default function ProductsPage() {
             <div className="flex-1 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Pharmacy', 'Name', 'Type', 'Description', 'Price', 'Status'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
+                  <tr>{['Pharmacy', 'Medication', 'Strength', 'Form', 'Description', 'Price', 'Status'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 text-sm text-slate-600">{p.pharmacy?.name || '—'}</td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 capitalize">{p.type || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600">{p.medicationStrength || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 capitalize">{p.medicationForm || p.type || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{p.description || '—'}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900">{p.price ? formatCurrency(p.price) : '—'}</td>
                       <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{p.status}</span></td>
@@ -129,8 +152,21 @@ export default function ProductsPage() {
                   {pharmacies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
-              <div><label className="field-label">Name *</label><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="field-input" /></div>
-              <div><label className="field-label">Type</label><input value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className="field-input" placeholder="e.g., injection, cream, capsule" /></div>
+              <div><label className="field-label">Medication Name *</label><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="field-input" placeholder="e.g., Tirzepatide" /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="field-label">Strength *</label><input value={form.medicationStrength} onChange={(e) => setForm((f) => ({ ...f, medicationStrength: e.target.value }))} className="field-input" placeholder="e.g., 15mg/mL" /></div>
+                <div>
+                  <label className="field-label">Form *</label>
+                  <select value={form.medicationForm} onChange={(e) => setForm((f) => ({ ...f, medicationForm: e.target.value, type: e.target.value }))} className="field-input">
+                    <option value="injection">Injection</option>
+                    <option value="tablet">Tablet</option>
+                    <option value="capsule">Capsule</option>
+                    <option value="cream">Cream</option>
+                    <option value="gel">Gel</option>
+                    <option value="nasal_spray">Nasal Spray</option>
+                  </select>
+                </div>
+              </div>
               <div><label className="field-label">Description</label><textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="field-input resize-none" rows={3} /></div>
               <div><label className="field-label">Price ($)</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className="field-input" /></div>
               <div><label className="field-label">Status</label><select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="field-input"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>

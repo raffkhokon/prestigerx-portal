@@ -40,6 +40,12 @@ const STEPS = [
   'Shipping & Review',
 ];
 
+function inferStrengthFromName(name?: string): string {
+  if (!name) return '';
+  const match = name.match(/\b\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|units)(?:\/[a-zA-Z]+)?\b/i);
+  return match ? match[0] : '';
+}
+
 export default function CreatePrescriptionPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -377,6 +383,7 @@ export default function CreatePrescriptionPage() {
                       productId: '',
                       medicationName: '',
                       medicationStrength: '',
+                      medicationForm: 'injection',
                       amount: 0,
                     });
                   }}
@@ -401,7 +408,8 @@ export default function CreatePrescriptionPage() {
                       ...form,
                       productId: e.target.value,
                       medicationName: product?.name || form.medicationName,
-                      medicationForm: product?.type || form.medicationForm,
+                      medicationStrength: product?.medicationStrength || inferStrengthFromName(product?.name) || form.medicationStrength,
+                      medicationForm: product?.medicationForm || product?.type || form.medicationForm,
                       amount: typeof product?.price === 'number' ? product.price : form.amount,
                     });
                   }}
@@ -411,7 +419,10 @@ export default function CreatePrescriptionPage() {
                   <option value="">{form.pharmacyId ? 'Select product...' : 'Select pharmacy first'}</option>
                   {products.map((product) => (
                     <option key={product.id} value={product.id}>
-                      {product.name}{typeof product.price === 'number' ? ` — $${product.price.toFixed(2)}` : ''}
+                      {product.name}
+                      {product.medicationStrength ? ` ${product.medicationStrength}` : ''}
+                      {product.medicationForm ? ` (${product.medicationForm})` : ''}
+                      {typeof product.price === 'number' ? ` — $${product.price.toFixed(2)}` : ''}
                     </option>
                   ))}
                 </select>
@@ -441,17 +452,17 @@ export default function CreatePrescriptionPage() {
                   <input
                     type="text"
                     value={form.medicationStrength}
-                    onChange={(e) => setForm({ ...form, medicationStrength: e.target.value })}
-                    placeholder="e.g., 15mg/mL"
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    readOnly
+                    placeholder="Auto-filled from product"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-700"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Form</label>
                   <select
                     value={form.medicationForm}
-                    onChange={(e) => setForm({ ...form, medicationForm: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-700"
                   >
                     <option value="injection">Injection</option>
                     <option value="tablet">Tablet</option>
