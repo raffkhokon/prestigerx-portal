@@ -33,3 +33,22 @@ This will:
 ---
 Date: 2026-02-21
 Confirmed by: User (mock data, no migration needed)
+
+## Billing Model Decision
+
+**Date:** 2026-02-21
+**Model:** Clinic Pays (B2B)
+
+**How it works:**
+- Provider selects clinic when creating prescription
+- Clinic gets billed for all their prescriptions
+- Clinic handles patient billing separately
+
+**No schema changes needed** - Current BillingTransaction model already supports this.
+
+**Implementation:**
+- Prescription form will include clinic dropdown (assigned clinics only)
+- BillingTransaction auto-created with clinicId
+- Monthly invoicing to clinics (admin tool, Phase 4)
+
+See memory/prestigerx/BILLING-MODEL.md for full details.
