@@ -6,13 +6,13 @@ import { Hospital, Plus, Search, Loader2, X, CheckCircle2 } from 'lucide-react';
 
 interface Provider {
   id: string;
-  clinicId: string;
   name: string;
   npi?: string;
   license?: string;
   phone?: string;
   practice?: string;
   createdAt: string;
+  clinics?: Array<{ clinic: { id: string; name: string } }>;
 }
 
 const emptyForm = { name: '', npi: '', license: '', phone: '', practice: '' };
@@ -27,6 +27,10 @@ export default function ProvidersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
+  const [assigningClinicId, setAssigningClinicId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -54,6 +58,49 @@ export default function ProvidersPage() {
       setForm(emptyForm);
       fetchData();
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
+  };
+
+  const openAssignModal = async (provider: Provider) => {
+    setSelectedProvider(provider);
+    setShowAssignModal(true);
+
+    if (clinics.length === 0) {
+      try {
+        const res = await fetch('/api/clinics');
+        const data = await res.json();
+        setClinics((data.data || []).map((c: any) => ({ id: c.id, name: c.name })));
+      } catch {
+        setErrorMsg('Failed to load clinics');
+      }
+    }
+  };
+
+  const handleAssignClinic = async (clinicId: string) => {
+    if (!selectedProvider) return;
+    setAssigningClinicId(clinicId);
+    try {
+      const res = await fetch(`/api/providers/${selectedProvider.id}/clinics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clinicId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to assign clinic');
+
+      setSuccessMsg('Provider assigned to clinic');
+      await fetchData();
+
+      // Refresh selected provider data in modal
+      const refreshedRes = await fetch('/api/providers');
+      const refreshedData = await refreshedRes.json();
+      const updatedProvider = (refreshedData.data || []).find((p: Provider) => p.id === selectedProvider.id);
+      if (updatedProvider) setSelectedProvider(updatedProvider);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Failed to assign clinic');
+    } finally {
+      setAssigningClinicId(null);
+    }
   };
 
   const filtered = providers.filter((p) => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.npi?.includes(search));
@@ -89,7 +136,7 @@ export default function ProvidersPage() {
             <div className="flex-1 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Name', 'NPI', 'License', 'Phone', 'Practice'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
+                  <tr>{['Name', 'NPI', 'License', 'Phone', 'Practice', 'Clinics', 'Actions'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => (
@@ -99,6 +146,17 @@ export default function ProvidersPage() {
                       <td className="px-4 py-3 text-sm text-slate-600">{p.license || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{p.phone || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{p.practice || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {p.clinics && p.clinics.length > 0 ? p.clinics.map((pc) => pc.clinic.name).join(', ') : 'Unassigned'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => openAssignModal(p)}
+                          className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition"
+                        >
+                          Assign Clinic
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -123,6 +181,42 @@ export default function ProvidersPage() {
             <div className="p-5 border-t flex gap-3 justify-end">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
               <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}Add Provider</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAssignModal && selectedProvider && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h2 className="font-bold text-slate-900">Assign Clinics • {selectedProvider.name}</h2>
+              <button onClick={() => setShowAssignModal(false)}><X className="h-5 w-5 text-slate-400" /></button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3">
+              {clinics.length === 0 ? (
+                <p className="text-sm text-slate-500">No clinics available.</p>
+              ) : clinics.map((clinic) => {
+                const isAssigned = !!selectedProvider.clinics?.some((pc) => pc.clinic.id === clinic.id);
+                return (
+                  <div key={clinic.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{clinic.name}</p>
+                      <p className="text-xs text-slate-500">{isAssigned ? 'Already assigned' : 'Not assigned'}</p>
+                    </div>
+                    <button
+                      disabled={isAssigned || assigningClinicId === clinic.id}
+                      onClick={() => handleAssignClinic(clinic.id)}
+                      className="text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium transition"
+                    >
+                      {isAssigned ? 'Assigned' : assigningClinicId === clinic.id ? 'Assigning...' : 'Assign'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t flex justify-end">
+              <button onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-slate-600 text-sm">Close</button>
             </div>
           </div>
         </div>
