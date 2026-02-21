@@ -82,7 +82,15 @@ export default function CreatePrescriptionPage() {
 
   const fetchAssignedClinics = async () => {
     try {
-      // Get clinics this provider is assigned to
+      if (session?.user?.role === 'admin') {
+        // Admins can select from all active clinics
+        const res = await fetch('/api/clinics');
+        const data = await res.json();
+        setAssignedClinics(data.data || []);
+        return;
+      }
+
+      // Providers can only select clinics they are assigned to
       const res = await fetch(`/api/providers/${session?.user?.id}/clinics`);
       const data = await res.json();
       setAssignedClinics(data.clinics || []);
@@ -263,12 +271,21 @@ export default function CreatePrescriptionPage() {
               {assignedClinics.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
                   <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">You are not assigned to any clinics yet</p>
-                  <p className="text-xs mt-1">Contact your administrator to get assigned to clinics</p>
+                  {session?.user?.role === 'admin' ? (
+                    <>
+                      <p className="text-sm">No clinics configured yet</p>
+                      <p className="text-xs mt-1">Create a clinic first, then return to prescription creation</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm">You are not assigned to any clinics yet</p>
+                      <p className="text-xs mt-1">Contact your administrator to get assigned to clinics</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {assignedClinics.map((clinic) => (
+                  {assignedClinics.map((clinic: any) => (
                     <button
                       key={clinic.id}
                       onClick={() =>
