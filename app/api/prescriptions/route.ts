@@ -117,11 +117,10 @@ export async function POST(req: NextRequest) {
         providerDea: encrypted.providerDea,
         providerLicense: encrypted.providerLicense,
         providerPractice: encrypted.providerPractice,
-        providerId: encrypted.providerId,
+        providerId: session.user.id, // Provider who created the prescription
         amount: encrypted.amount || 0,
         paymentStatus: 'pending',
-        orderStatus: 'pending',
-        userId: session.user.id,
+        orderStatus: 'new',
       },
     });
 
