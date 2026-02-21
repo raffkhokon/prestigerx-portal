@@ -7,11 +7,31 @@ import { logAudit } from '@/lib/audit';
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== 'admin') {
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const role = searchParams.get('role');
+
+    // Clinic users can only query providers (for filtering)
+    if (session.user.role === 'clinic' && role !== 'provider') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Non-admins can only query providers
+    if (session.user.role !== 'admin' && role !== 'provider') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const where: Record<string, unknown> = {};
+    
+    if (role) {
+      where.role = role;
+    }
+
     const users = await prisma.user.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -26,7 +46,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ data: users });
+    return NextResponse.json({ users });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

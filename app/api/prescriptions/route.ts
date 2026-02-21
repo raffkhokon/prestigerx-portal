@@ -14,18 +14,50 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const status = searchParams.get('status');
+    const search = searchParams.get('search');
+    const providerId = searchParams.get('providerId');
+    const paymentStatus = searchParams.get('paymentStatus');
+    const orderStatus = searchParams.get('orderStatus');
+    const shippingMethod = searchParams.get('shipping');
+    const sortBy = searchParams.get('sort') || 'createdAt';
+    const sortOrder = searchParams.get('order') || 'desc';
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
 
     // Multi-tenant: clinic users only see their own prescriptions
-    if (session.user.role !== 'admin') {
+    if (session.user.role !== 'admin' && session.user.clinicId) {
       where.clinicId = session.user.clinicId;
     }
 
-    if (status) {
-      where.orderStatus = status;
+    // Provider filter (for clinic users)
+    if (providerId) {
+      where.providerId = providerId;
+    }
+
+    // Payment status filter
+    if (paymentStatus) {
+      where.paymentStatus = paymentStatus;
+    }
+
+    // Order status filter
+    if (orderStatus) {
+      where.orderStatus = orderStatus;
+    }
+
+    // Shipping method filter
+    if (shippingMethod) {
+      where.shippingMethod = shippingMethod;
+    }
+
+    // Search filter (patient name, medication, provider name, prescription ID)
+    if (search) {
+      where.OR = [
+        { patientName: { contains: search, mode: 'insensitive' } },
+        { medicationName: { contains: search, mode: 'insensitive' } },
+        { providerName: { contains: search, mode: 'insensitive' } },
+        { id: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const [prescriptions, total] = await Promise.all([
@@ -33,11 +65,12 @@ export async function GET(req: NextRequest) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortBy]: sortOrder as 'asc' | 'desc' },
         include: {
           patient: { select: { id: true, firstName: true, lastName: true } },
           pharmacy: { select: { id: true, name: true } },
           clinic: { select: { id: true, name: true } },
+          provider: { select: { id: true, name: true, npi: true, phone: true } },
         },
       }),
       prisma.prescription.count({ where }),

@@ -57,6 +57,8 @@ export default function PrescriptionsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('');
   const [shippingFilter, setShippingFilter] = useState('');
+  const [providerFilter, setProviderFilter] = useState('');
+  const [providers, setProviders] = useState<Array<{ id: string; name: string }>>([]);
   const [sortColumn, setSortColumn] = useState<string>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
@@ -76,6 +78,7 @@ export default function PrescriptionsPage() {
       if (statusFilter) params.set('paymentStatus', statusFilter);
       if (orderStatusFilter) params.set('orderStatus', orderStatusFilter);
       if (shippingFilter) params.set('shipping', shippingFilter);
+      if (providerFilter) params.set('providerId', providerFilter);
       
       const res = await fetch(`/api/prescriptions?${params}`);
       const data = await res.json();
@@ -86,7 +89,7 @@ export default function PrescriptionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, medicationFilter, statusFilter, orderStatusFilter, shippingFilter, sortColumn, sortDirection]);
+  }, [search, medicationFilter, statusFilter, orderStatusFilter, shippingFilter, providerFilter, sortColumn, sortDirection]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -94,6 +97,16 @@ export default function PrescriptionsPage() {
     }, 300);
     return () => clearTimeout(debounce);
   }, [fetchPrescriptions]);
+
+  // Fetch providers list for clinic users
+  useEffect(() => {
+    if (session?.user?.role === 'clinic') {
+      fetch('/api/users?role=provider')
+        .then(res => res.json())
+        .then(data => setProviders(data.users || []))
+        .catch(() => {});
+    }
+  }, [session]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -157,6 +170,19 @@ export default function PrescriptionsPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-3 mt-4">
+          {/* Provider filter - only for clinic users */}
+          {session?.user?.role === 'clinic' && providers.length > 0 && (
+            <FilterDropdown
+              icon="👨‍⚕️"
+              label="Filter by Provider"
+              value={providerFilter}
+              onChange={setProviderFilter}
+              options={[
+                { value: '', label: 'All Providers' },
+                ...providers.map(p => ({ value: p.id, label: p.name }))
+              ]}
+            />
+          )}
           <FilterDropdown
             icon="📦"
             label="Filter by Order Status"
@@ -398,7 +424,8 @@ export default function PrescriptionsPage() {
           title="Prescription Details"
         >
           <PrescriptionDetails 
-            prescription={selectedRx} 
+            prescription={selectedRx}
+            readOnly={session?.user?.role === 'clinic'}
             onUpdate={() => {
               // Refresh the prescriptions list
               fetchPrescriptions(pagination.page);

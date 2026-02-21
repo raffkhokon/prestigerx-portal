@@ -63,16 +63,19 @@ export default function ProviderDashboard() {
               Welcome back, {session?.user?.name}
             </h1>
             <p className="text-slate-500 text-sm mt-1">
-              {session?.user?.role === 'provider' ? 'Provider' : 'User'} Dashboard
+              {session?.user?.role === 'provider' ? 'Provider' : session?.user?.role === 'clinic' ? 'Clinic User' : 'User'} Dashboard
             </p>
           </div>
-          <Link
-            href="/prescriptions/create"
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition"
-          >
-            <Plus className="h-4 w-4" />
-            New Prescription
-          </Link>
+          {/* Only show "New Prescription" button for providers and admins */}
+          {session?.user?.role !== 'clinic' && (
+            <Link
+              href="/prescriptions/create"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition"
+            >
+              <Plus className="h-4 w-4" />
+              New Prescription
+            </Link>
+          )}
         </div>
       </div>
 
