@@ -392,7 +392,16 @@ export default function PrescriptionsPage() {
           onClose={() => setSelectedRx(null)}
           title="Prescription Details"
         >
-          <PrescriptionDetails prescription={selectedRx} />
+          <PrescriptionDetails 
+            prescription={selectedRx} 
+            onUpdate={() => {
+              // Refresh the prescriptions list
+              fetchPrescriptions(pagination.page);
+              // Update the selected prescription to reflect changes
+              const updated = prescriptions.find(p => p.id === selectedRx.id);
+              if (updated) setSelectedRx(updated);
+            }}
+          />
         </SlideOver>
       )}
     </div>

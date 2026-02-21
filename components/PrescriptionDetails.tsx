@@ -50,13 +50,15 @@ interface PrescriptionDetailsProps {
     updatedAt: string;
     statusHistory?: StatusChange[];
   };
+  onUpdate?: () => void;
 }
 
-export default function PrescriptionDetails({ prescription }: PrescriptionDetailsProps) {
+export default function PrescriptionDetails({ prescription, onUpdate }: PrescriptionDetailsProps) {
   const [editingStatus, setEditingStatus] = useState(false);
   const [orderStatus, setOrderStatus] = useState(prescription.orderStatus);
   const [paymentStatus, setPaymentStatus] = useState(prescription.paymentStatus);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -70,18 +72,33 @@ export default function PrescriptionDetails({ prescription }: PrescriptionDetail
 
   const handleSaveStatus = async () => {
     setSaving(true);
+    setError('');
     try {
       const res = await fetch(`/api/prescriptions/${prescription.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderStatus, paymentStatus }),
       });
-      if (res.ok) {
-        setEditingStatus(false);
-        // Optionally trigger a refresh or show success message
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update status');
       }
-    } catch (error) {
-      console.error('Failed to update status:', error);
+      
+      setEditingStatus(false);
+      
+      // Update the prescription object locally
+      prescription.orderStatus = orderStatus;
+      prescription.paymentStatus = paymentStatus;
+      
+      // Notify parent to refresh if callback provided
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update status';
+      setError(errorMsg);
+      console.error('Failed to update status:', err);
     } finally {
       setSaving(false);
     }
@@ -149,6 +166,12 @@ export default function PrescriptionDetails({ prescription }: PrescriptionDetail
             </div>
           )}
         </div>
+
+        {error && (
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         {editingStatus ? (
           <div className="space-y-3">
