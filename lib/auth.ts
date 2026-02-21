@@ -19,17 +19,18 @@ declare module 'next-auth' {
       practice?: string;
     } & DefaultSession['user'];
   }
-  
-  interface User {
-    role?: string;
-    clinicId?: string;
-    clinicName?: string;
-    npi?: string;
-    dea?: string;
-    license?: string;
-    phone?: string;
-    practice?: string;
-  }
+}
+
+// Extend User interface for custom fields
+interface CustomUser {
+  role?: string;
+  clinicId?: string;
+  clinicName?: string;
+  npi?: string;
+  dea?: string;
+  license?: string;
+  phone?: string;
+  practice?: string;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -88,7 +89,7 @@ export const authOptions: NextAuthOptions = {
             license: user.license ?? undefined,
             phone: user.phone ?? undefined,
             practice: user.practice ?? undefined,
-          } as User;
+          };
         } catch (error) {
           console.error('[AUTH] Authorization error:', error);
           return null;
