@@ -134,8 +134,8 @@ export default function PrescriptionsPage() {
       <div className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">PrestigeScripts Prescription History</h1>
-            <p className="text-slate-500 text-sm mt-1">Search your PrestigeScripts prescription records</p>
+            <h1 className="text-2xl font-bold text-slate-900">Prescription History</h1>
+            <p className="text-slate-500 text-sm mt-1">Search your prescription records</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition">
             <Download className="h-4 w-4" />
@@ -158,53 +158,40 @@ export default function PrescriptionsPage() {
         {/* Filters */}
         <div className="flex items-center gap-3 mt-4">
           <FilterDropdown
-            icon="💊"
-            label="Medication"
-            value={medicationFilter}
-            onChange={setMedicationFilter}
-            options={[
-              { value: '', label: 'All Medications' },
-              { value: 'tirzepatide', label: 'Tirzepatide' },
-              { value: 'semaglutide', label: 'Semaglutide' },
-              { value: 'nad', label: 'NAD+' },
-            ]}
-          />
-          <FilterDropdown
-            icon="💳"
-            label="Status"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'pending', label: 'Pending' },
-              { value: 'paid', label: 'Payment Successful' },
-              { value: 'failed', label: 'Failed' },
-            ]}
-          />
-          <FilterDropdown
             icon="📦"
-            label="Order Status"
+            label="Filter by Order Status"
             value={orderStatusFilter}
             onChange={setOrderStatusFilter}
             options={[
-              { value: '', label: 'All Orders' },
-              { value: 'new', label: 'New' },
-              { value: 'processing', label: 'Processing' },
+              { value: '', label: 'All Order Status' },
+              { value: 'received', label: 'Received' },
+              { value: 'processed', label: 'Processed' },
+              { value: 'need_clarification', label: 'Need Clarification' },
               { value: 'shipped', label: 'Shipped' },
-              { value: 'delivered', label: 'Delivered' },
               { value: 'cancelled', label: 'Cancelled' },
             ]}
           />
           <FilterDropdown
+            icon="💳"
+            label="Filter by Status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'paid', label: 'Payment Successful' },
+              { value: 'failed', label: 'Payment Failed' },
+              { value: 'cancelled_by_prescriber', label: 'Cancelled by Prescriber' },
+            ]}
+          />
+          <FilterDropdown
             icon="🚚"
-            label="Shipping"
+            label="Filter by Shipping"
             value={shippingFilter}
             onChange={setShippingFilter}
             options={[
               { value: '', label: 'All Shipping' },
-              { value: 'ship_to_patient', label: 'Ship to Patient' },
               { value: 'ship_to_clinic', label: 'Ship to Clinic' },
-              { value: 'pickup', label: 'Pickup' },
+              { value: 'ship_to_patient', label: 'Ship to Patient' },
             ]}
           />
           <div className="ml-auto text-sm text-slate-600">
@@ -425,12 +412,17 @@ function FilterDropdown({
   onChange: (value: string) => void; 
   options: Array<{ value: string; label: string }>; 
 }) {
+  const selectedOption = options.find(opt => opt.value === value) || options[0];
+  
   return (
-    <div className="relative">
+    <div className="relative inline-block">
+      <label className="absolute -top-2 left-2 px-1 bg-white text-xs font-medium text-slate-600 z-10">
+        {label}
+      </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-8 pr-8 py-2 border border-slate-300 rounded-lg text-sm appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition"
+        className="pl-3 pr-9 py-2.5 border border-slate-300 rounded-lg text-sm appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition min-w-[200px]"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -438,13 +430,7 @@ function FilterDropdown({
           </option>
         ))}
       </select>
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-base pointer-events-none">
-        {icon}
-      </span>
       <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-      <span className="absolute left-9 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-600 pointer-events-none">
-        {label}
-      </span>
     </div>
   );
 }
