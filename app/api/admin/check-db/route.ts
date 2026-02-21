@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 /**
  * Check Database Status
  * Returns user count by role (no sensitive data)
+ * PUBLIC ENDPOINT - No auth required
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const [adminCount, providerCount, clinicCount, totalCount] = await Promise.all([
