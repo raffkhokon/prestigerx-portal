@@ -74,12 +74,16 @@ export async function GET(req: NextRequest) {
       }));
 
       const q = search.toLowerCase();
-      const filtered = allDecrypted.filter((rx) =>
-        (rx.patientName || '').toLowerCase().includes(q) ||
-        (rx.medicationName || '').toLowerCase().includes(q) ||
-        (rx.providerName || '').toLowerCase().includes(q) ||
-        (rx.id || '').toLowerCase().includes(q)
-      );
+      const filtered = allDecrypted.filter((rx) => {
+        const patientFullName = `${rx?.patient?.firstName || ''} ${rx?.patient?.lastName || ''}`.trim();
+        return (
+          (rx.patientName || '').toLowerCase().includes(q) ||
+          patientFullName.toLowerCase().includes(q) ||
+          (rx.medicationName || '').toLowerCase().includes(q) ||
+          (rx.providerName || '').toLowerCase().includes(q) ||
+          (rx.id || '').toLowerCase().includes(q)
+        );
+      });
 
       total = filtered.length;
       decrypted = filtered.slice(skip, skip + limit);
