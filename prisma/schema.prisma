@@ -213,16 +213,18 @@ model Prescription {
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  pharmacyId  String?
-  pharmacy    Pharmacy? @relation(fields: [pharmacyId], references: [id])
-  name        String
-  type        String?
-  description String?
-  price       Float?
-  status      String    @default("active")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  pharmacyId         String?
+  pharmacy           Pharmacy? @relation(fields: [pharmacyId], references: [id])
+  name               String
+  medicationStrength String?
+  medicationForm     String?
+  type               String?
+  description        String?
+  price              Float?
+  status             String    @default("active")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([pharmacyId])
 }

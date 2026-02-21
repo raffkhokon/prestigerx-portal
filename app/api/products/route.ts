@@ -37,15 +37,17 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    if (!body.name || !body.pharmacyId) {
-      return NextResponse.json({ error: 'Name and pharmacy are required' }, { status: 400 });
+    if (!body.name || !body.pharmacyId || !body.medicationStrength || !body.medicationForm) {
+      return NextResponse.json({ error: 'Name, pharmacy, strength, and form are required' }, { status: 400 });
     }
 
     const product = await prisma.product.create({
       data: {
         pharmacyId: body.pharmacyId,
         name: body.name,
-        type: body.type,
+        medicationStrength: body.medicationStrength,
+        medicationForm: body.medicationForm,
+        type: body.type || body.medicationForm,
         description: body.description,
         price: body.price,
         status: body.status || 'active',
