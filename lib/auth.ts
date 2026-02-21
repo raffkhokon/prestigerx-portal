@@ -19,7 +19,10 @@ declare module 'next-auth' {
       practice?: string;
     } & DefaultSession['user'];
   }
+}
 
+// Extend AdapterUser from @auth/core/adapters
+declare module '@auth/core/adapters' {
   interface AdapterUser {
     role?: string;
     clinicId?: string;
