@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { Users, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ interface Patient {
 }
 
 const emptyForm = {
+  clinicId: '',
   firstName: '',
   lastName: '',
   dateOfBirth: '',
@@ -40,6 +42,7 @@ const emptyForm = {
 
 export default function PatientsPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,6 +53,7 @@ export default function PatientsPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
 
   const fetchPatients = useCallback(async () => {
     setLoading(true);
@@ -68,6 +72,20 @@ export default function PatientsPage() {
     fetchPatients();
   }, [fetchPatients]);
 
+  useEffect(() => {
+    if (session?.user?.role !== 'admin') return;
+    fetch('/api/clinics')
+      .then((res) => res.json())
+      .then((data) => setClinics((data.data || []).map((c: any) => ({ id: c.id, name: c.name }))))
+      .catch(() => {});
+  }, [session]);
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      openCreate();
+    }
+  }, [searchParams]);
+
   const openCreate = () => {
     setEditPatient(null);
     setForm(emptyForm);
@@ -77,6 +95,7 @@ export default function PatientsPage() {
   const openEdit = (patient: Patient) => {
     setEditPatient(patient);
     setForm({
+      clinicId: '',
       firstName: patient.firstName,
       lastName: patient.lastName,
       dateOfBirth: patient.dateOfBirth || '',
@@ -98,6 +117,12 @@ export default function PatientsPage() {
       setErrorMsg('First and last name are required');
       return;
     }
+
+    if (!editPatient && session?.user?.role === 'admin' && !form.clinicId) {
+      setErrorMsg('Please select a clinic');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const url = editPatient ? `/api/patients/${editPatient.id}` : '/api/patients';
@@ -107,12 +132,17 @@ export default function PatientsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error('Failed to save patient');
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save patient');
+      }
+
       setSuccessMsg(editPatient ? 'Patient updated successfully!' : 'Patient created successfully!');
       setShowForm(false);
       fetchPatients();
-    } catch {
-      setErrorMsg('Failed to save patient');
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Failed to save patient');
     } finally {
       setSubmitting(false);
     }
@@ -282,6 +312,21 @@ export default function PatientsPage() {
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               <div className="grid grid-cols-2 gap-4">
+                {session?.user?.role === 'admin' && !editPatient && (
+                  <div className="col-span-2">
+                    <label className="field-label">Clinic *</label>
+                    <select
+                      value={form.clinicId}
+                      onChange={(e) => setForm((f) => ({ ...f, clinicId: e.target.value }))}
+                      className="field-input"
+                    >
+                      <option value="">Select clinic...</option>
+                      {clinics.map((clinic) => (
+                        <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="field-label">First Name *</label>
                   <input value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="field-input" placeholder="Jane" />

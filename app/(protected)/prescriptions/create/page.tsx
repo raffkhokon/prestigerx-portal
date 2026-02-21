@@ -14,6 +14,11 @@ interface FormData {
   clinicId: string;
   clinicName: string;
   
+  // Pharmacy + Product
+  pharmacyId: string;
+  pharmacyName: string;
+  productId: string;
+
   // Step 3: Medication
   medicationName: string;
   medicationStrength: string;
@@ -42,11 +47,16 @@ export default function CreatePrescriptionPage() {
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
   const [assignedClinics, setAssignedClinics] = useState<any[]>([]);
+  const [pharmacies, setPharmacies] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [form, setForm] = useState<FormData>({
     patientId: '',
     patientName: '',
     clinicId: '',
     clinicName: '',
+    pharmacyId: '',
+    pharmacyName: '',
+    productId: '',
     medicationName: '',
     medicationStrength: '',
     medicationForm: 'injection',
@@ -59,9 +69,41 @@ export default function CreatePrescriptionPage() {
   });
 
   useEffect(() => {
+    if (!session?.user) return;
+
+    if (session.user.role === 'clinic') {
+      router.push('/prescriptions');
+      return;
+    }
+
     fetchPatients();
     fetchAssignedClinics();
-  }, []);
+  }, [session, router]);
+
+  useEffect(() => {
+    if (!form.clinicId) {
+      setPharmacies([]);
+      setProducts([]);
+      return;
+    }
+
+    fetch(`/api/pharmacies?clinicId=${form.clinicId}`)
+      .then((res) => res.json())
+      .then((data) => setPharmacies(data.data || []))
+      .catch((error) => console.error('Failed to fetch pharmacies:', error));
+  }, [form.clinicId]);
+
+  useEffect(() => {
+    if (!form.pharmacyId) {
+      setProducts([]);
+      return;
+    }
+
+    fetch(`/api/products?pharmacyId=${form.pharmacyId}`)
+      .then((res) => res.json())
+      .then((data) => setProducts(data.data || []))
+      .catch((error) => console.error('Failed to fetch products:', error));
+  }, [form.pharmacyId]);
 
   const fetchPatients = async () => {
     try {
@@ -75,7 +117,15 @@ export default function CreatePrescriptionPage() {
 
   const fetchAssignedClinics = async () => {
     try {
-      // Get clinics this provider is assigned to
+      if (session?.user?.role === 'admin') {
+        // Admins can select from all active clinics
+        const res = await fetch('/api/clinics');
+        const data = await res.json();
+        setAssignedClinics(data.data || []);
+        return;
+      }
+
+      // Providers can only select clinics they are assigned to
       const res = await fetch(`/api/providers/${session?.user?.id}/clinics`);
       const data = await res.json();
       setAssignedClinics(data.clinics || []);
@@ -136,7 +186,7 @@ export default function CreatePrescriptionPage() {
       case 1: // Clinic
         return form.clinicId && form.clinicName;
       case 2: // Medication
-        return form.medicationName && form.medicationStrength && form.quantity > 0;
+        return form.pharmacyId && form.productId && form.medicationName && form.medicationStrength && form.quantity > 0;
       case 3: // Review
         return true;
       default:
@@ -222,7 +272,14 @@ export default function CreatePrescriptionPage() {
                 ))}
               </select>
               <p className="text-xs text-slate-500 mt-2">
-                Or <button className="text-blue-600 hover:underline">create new patient</button>
+                Or{' '}
+                <button
+                  type="button"
+                  onClick={() => router.push('/patients?create=1&from=prescription-create')}
+                  className="text-blue-600 hover:underline"
+                >
+                  create new patient
+                </button>
               </p>
             </div>
           )}
@@ -249,12 +306,21 @@ export default function CreatePrescriptionPage() {
               {assignedClinics.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
                   <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">You are not assigned to any clinics yet</p>
-                  <p className="text-xs mt-1">Contact your administrator to get assigned to clinics</p>
+                  {session?.user?.role === 'admin' ? (
+                    <>
+                      <p className="text-sm">No clinics configured yet</p>
+                      <p className="text-xs mt-1">Create a clinic first, then return to prescription creation</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm">You are not assigned to any clinics yet</p>
+                      <p className="text-xs mt-1">Contact your administrator to get assigned to clinics</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {assignedClinics.map((clinic) => (
+                  {assignedClinics.map((clinic: any) => (
                     <button
                       key={clinic.id}
                       onClick={() =>
@@ -262,6 +328,9 @@ export default function CreatePrescriptionPage() {
                           ...form,
                           clinicId: clinic.id,
                           clinicName: clinic.name,
+                          pharmacyId: '',
+                          pharmacyName: '',
+                          productId: '',
                         })
                       }
                       className={`w-full p-4 border-2 rounded-lg text-left transition ${
@@ -292,6 +361,64 @@ export default function CreatePrescriptionPage() {
           {currentStep === 2 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold mb-4">Medication Details</h2>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Pharmacy *
+                </label>
+                <select
+                  value={form.pharmacyId}
+                  onChange={(e) => {
+                    const pharmacy = pharmacies.find((p) => p.id === e.target.value);
+                    setForm({
+                      ...form,
+                      pharmacyId: e.target.value,
+                      pharmacyName: pharmacy?.name || '',
+                      productId: '',
+                      medicationName: '',
+                      medicationStrength: '',
+                      amount: 0,
+                    });
+                  }}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select pharmacy...</option>
+                  {pharmacies.map((pharmacy) => (
+                    <option key={pharmacy.id} value={pharmacy.id}>{pharmacy.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Product * (preloads medication + price)
+                </label>
+                <select
+                  value={form.productId}
+                  onChange={(e) => {
+                    const product = products.find((p) => p.id === e.target.value);
+                    setForm({
+                      ...form,
+                      productId: e.target.value,
+                      medicationName: product?.name || form.medicationName,
+                      medicationForm: product?.type || form.medicationForm,
+                      amount: typeof product?.price === 'number' ? product.price : form.amount,
+                    });
+                  }}
+                  disabled={!form.pharmacyId}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
+                >
+                  <option value="">{form.pharmacyId ? 'Select product...' : 'Select pharmacy first'}</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}{typeof product.price === 'number' ? ` — $${product.price.toFixed(2)}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {form.pharmacyId && products.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">No products configured for this pharmacy. Add products in Product Management before creating this prescription.</p>
+                )}
+              </div>
               
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -300,9 +427,9 @@ export default function CreatePrescriptionPage() {
                 <input
                   type="text"
                   value={form.medicationName}
-                  onChange={(e) => setForm({ ...form, medicationName: e.target.value })}
-                  placeholder="e.g., Tirzepatide"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  readOnly
+                  placeholder="Select a product to auto-fill"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-700"
                 />
               </div>
 
@@ -414,6 +541,7 @@ export default function CreatePrescriptionPage() {
                 <div className="text-sm text-slate-700 space-y-1">
                   <p><strong>Patient:</strong> {form.patientName}</p>
                   <p><strong>Clinic:</strong> {form.clinicName} (will be billed)</p>
+                  <p><strong>Pharmacy:</strong> {form.pharmacyName || 'Not selected'}</p>
                   <p><strong>Medication:</strong> {form.medicationName} {form.medicationStrength}</p>
                   <p><strong>Quantity:</strong> {form.quantity}</p>
                   <p><strong>Provider:</strong> {session?.user?.name}</p>

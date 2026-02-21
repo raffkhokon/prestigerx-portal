@@ -14,10 +14,12 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Plus,
 } from 'lucide-react';
 import PrescriptionDetails from '@/components/PrescriptionDetails';
 import SlideOver from '@/components/SlideOver';
 import { TableSkeleton } from '@/components/Skeleton';
+import Link from 'next/link';
 
 interface Prescription {
   id: string;
@@ -150,10 +152,21 @@ export default function PrescriptionsPage() {
             <h1 className="text-2xl font-bold text-slate-900">Prescription History</h1>
             <p className="text-slate-500 text-sm mt-1">Search your prescription records</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition">
-            <Download className="h-4 w-4" />
-            Export Data
-          </button>
+          <div className="flex items-center gap-2">
+            {session?.user?.role !== 'clinic' && (
+              <Link
+                href="/prescriptions/create"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+              >
+                <Plus className="h-4 w-4" />
+                New Prescription
+              </Link>
+            )}
+            <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition">
+              <Download className="h-4 w-4" />
+              Export Data
+            </button>
+          </div>
         </div>
 
         {/* Search */}
