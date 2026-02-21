@@ -22,6 +22,7 @@ export const PHI_FIELDS: Record<string, string[]> = {
     'streetAddress',
     'zipCode',
     'allergies',
+    'gender', // Added
   ],
   prescription: [
     'medicationName',
@@ -31,8 +32,23 @@ export const PHI_FIELDS: Record<string, string[]> = {
     'providerName',
     'providerNpi',
     'providerPhone',
+    // Added denormalized patient fields (CRITICAL)
+    'patientName',
+    'patientDob',
+    'patientGender',
+    'patientAllergies',
   ],
-  provider: ['providerNpi', 'providerName', 'providerPhone', 'name', 'npi', 'phone'],
+  provider: [
+    'providerNpi',
+    'providerName',
+    'providerPhone',
+    'name',
+    'npi',
+    'phone',
+    'dea',      // Added
+    'license',  // Added
+    'email',    // Added
+  ],
 };
 
 function getKey(): Buffer {
