@@ -59,9 +59,16 @@ export default function CreatePrescriptionPage() {
   });
 
   useEffect(() => {
+    if (!session?.user) return;
+
+    if (session.user.role === 'clinic') {
+      router.push('/prescriptions');
+      return;
+    }
+
     fetchPatients();
     fetchAssignedClinics();
-  }, []);
+  }, [session, router]);
 
   const fetchPatients = async () => {
     try {

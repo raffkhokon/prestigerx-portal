@@ -112,6 +112,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Only providers and admins can create prescriptions
+    if (!['provider', 'admin'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await req.json();
 
     // Auto-assign clinic from session if not provided
