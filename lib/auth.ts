@@ -19,6 +19,17 @@ declare module 'next-auth' {
       practice?: string;
     } & DefaultSession['user'];
   }
+
+  interface AdapterUser {
+    role?: string;
+    clinicId?: string;
+    clinicName?: string;
+    npi?: string;
+    dea?: string;
+    license?: string;
+    phone?: string;
+    practice?: string;
+  }
 }
 
 // Extend User interface for custom fields
