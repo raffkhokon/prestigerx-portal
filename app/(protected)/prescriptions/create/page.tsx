@@ -200,6 +200,14 @@ export default function CreatePrescriptionPage() {
     }
   };
 
+  const selectedPatient = patients.find((p) => p.id === form.patientId);
+  const selectedClinic = assignedClinics.find((c: any) => c.id === form.clinicId);
+  const shippingAddress = form.shippingMethod === 'ship_to_clinic'
+    ? (selectedClinic?.address || 'Clinic address not available')
+    : [selectedPatient?.streetAddress, selectedPatient?.city, selectedPatient?.state, selectedPatient?.zipCode]
+        .filter(Boolean)
+        .join(', ') || 'Patient address not available';
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -531,6 +539,10 @@ export default function CreatePrescriptionPage() {
                   <option value="ship_to_patient">Ship to Patient</option>
                   <option value="ship_to_clinic">Ship to Clinic</option>
                 </select>
+                <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <p className="text-xs text-slate-500 uppercase tracking-wide">Shipping Destination</p>
+                  <p className="text-sm text-slate-800 mt-1">{shippingAddress}</p>
+                </div>
               </div>
 
               <div>
@@ -553,6 +565,7 @@ export default function CreatePrescriptionPage() {
                   <p><strong>Patient:</strong> {form.patientName}</p>
                   <p><strong>Clinic:</strong> {form.clinicName} (will be billed)</p>
                   <p><strong>Pharmacy:</strong> {form.pharmacyName || 'Not selected'}</p>
+                  <p><strong>Ships To:</strong> {form.shippingMethod === 'ship_to_clinic' ? 'Clinic' : 'Patient'} — {shippingAddress}</p>
                   <p><strong>Medication:</strong> {form.medicationName} {form.medicationStrength}</p>
                   <p><strong>Quantity:</strong> {form.quantity}</p>
                   <p><strong>Provider:</strong> {session?.user?.name}</p>

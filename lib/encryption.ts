@@ -32,6 +32,11 @@ export const PHI_FIELDS: Record<string, string[]> = {
     'providerName',
     'providerNpi',
     'providerPhone',
+    'shippingRecipientName',
+    'shippingStreetAddress',
+    'shippingCity',
+    'shippingState',
+    'shippingZipCode',
     // Added denormalized patient fields (CRITICAL)
     'patientName',
     'patientDob',

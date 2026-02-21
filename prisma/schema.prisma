@@ -180,6 +180,11 @@ model Prescription {
   writtenDate         String?
   daw                 Boolean              @default(false)
   shippingMethod      String               @default("ship_to_patient")
+  shippingRecipientName String?
+  shippingStreetAddress String?
+  shippingCity        String?
+  shippingState       String?
+  shippingZipCode     String?
   
   // Provider Info — encrypted (denormalized from User)
   providerName        String? // encrypted

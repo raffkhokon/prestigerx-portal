@@ -130,6 +130,32 @@ export async function POST(req: NextRequest) {
       body.clinicName = session.user.clinicName;
     }
 
+    // Resolve shipping destination server-side for data integrity
+    const patient = await prisma.patient.findUnique({ where: { id: body.patientId } });
+    const clinic = await prisma.clinic.findUnique({ where: { id: body.clinicId } });
+
+    if (!patient || !clinic) {
+      return NextResponse.json({ error: 'Invalid patient or clinic selection' }, { status: 400 });
+    }
+
+    const decryptedPatient = decryptPHI(patient as unknown as Record<string, unknown>, 'patient') as Record<string, unknown>;
+
+    if (body.shippingMethod === 'ship_to_clinic') {
+      body.shippingRecipientName = clinic.name;
+      body.shippingStreetAddress = clinic.address || '';
+      body.shippingCity = '';
+      body.shippingState = '';
+      body.shippingZipCode = '';
+      body.clinicAddress = clinic.address || '';
+    } else {
+      body.shippingMethod = 'ship_to_patient';
+      body.shippingRecipientName = `${decryptedPatient.firstName || ''} ${decryptedPatient.lastName || ''}`.trim();
+      body.shippingStreetAddress = (decryptedPatient.streetAddress as string) || '';
+      body.shippingCity = (decryptedPatient.city as string) || '';
+      body.shippingState = (decryptedPatient.state as string) || '';
+      body.shippingZipCode = (decryptedPatient.zipCode as string) || '';
+    }
+
     // Encrypt PHI fields before saving
     const encrypted = encryptPHI(body, 'prescription');
 
@@ -154,6 +180,11 @@ export async function POST(req: NextRequest) {
         writtenDate: encrypted.writtenDate,
         daw: encrypted.daw || false,
         shippingMethod: encrypted.shippingMethod || 'ship_to_patient',
+        shippingRecipientName: encrypted.shippingRecipientName,
+        shippingStreetAddress: encrypted.shippingStreetAddress,
+        shippingCity: encrypted.shippingCity,
+        shippingState: encrypted.shippingState,
+        shippingZipCode: encrypted.shippingZipCode,
         providerName: encrypted.providerName,
         providerNpi: encrypted.providerNpi,
         providerPhone: encrypted.providerPhone,
