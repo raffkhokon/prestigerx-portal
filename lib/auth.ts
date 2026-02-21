@@ -1,7 +1,36 @@
-import { type NextAuthOptions, type User, getServerSession } from 'next-auth';
+import { type NextAuthOptions, type User, getServerSession, type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+
+// Extend NextAuth types
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string;
+      role: string;
+      clinicId?: string;
+      clinicName?: string;
+      // Provider fields
+      npi?: string;
+      dea?: string;
+      license?: string;
+      phone?: string;
+      practice?: string;
+    } & DefaultSession['user'];
+  }
+  
+  interface User {
+    role?: string;
+    clinicId?: string;
+    clinicName?: string;
+    npi?: string;
+    dea?: string;
+    license?: string;
+    phone?: string;
+    practice?: string;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -54,6 +83,11 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             clinicId: user.clinicId ?? undefined,
             clinicName: user.clinicName ?? undefined,
+            npi: user.npi ?? undefined,
+            dea: user.dea ?? undefined,
+            license: user.license ?? undefined,
+            phone: user.phone ?? undefined,
+            practice: user.practice ?? undefined,
           } as User;
         } catch (error) {
           console.error('[AUTH] Authorization error:', error);
@@ -66,9 +100,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id ?? '';
-        token.role = (user as User & { role?: string }).role ?? 'clinic';
-        token.clinicId = (user as User & { clinicId?: string }).clinicId;
-        token.clinicName = (user as User & { clinicName?: string }).clinicName;
+        token.role = user.role ?? 'provider';
+        token.clinicId = user.clinicId;
+        token.clinicName = user.clinicName;
+        token.npi = user.npi;
+        token.dea = user.dea;
+        token.license = user.license;
+        token.phone = user.phone;
+        token.practice = user.practice;
       }
       return token;
     },
@@ -78,6 +117,11 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.clinicId = token.clinicId as string | undefined;
         session.user.clinicName = token.clinicName as string | undefined;
+        session.user.npi = token.npi as string | undefined;
+        session.user.dea = token.dea as string | undefined;
+        session.user.license = token.license as string | undefined;
+        session.user.phone = token.phone as string | undefined;
+        session.user.practice = token.practice as string | undefined;
       }
       return session;
     },
