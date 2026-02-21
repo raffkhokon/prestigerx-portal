@@ -7,6 +7,7 @@ import { Hospital, Plus, Search, Loader2, X, CheckCircle2 } from 'lucide-react';
 interface Provider {
   id: string;
   name: string;
+  email?: string;
   npi?: string;
   license?: string;
   phone?: string;
@@ -15,7 +16,15 @@ interface Provider {
   clinics?: Array<{ clinic: { id: string; name: string } }>;
 }
 
-const emptyForm = { name: '', npi: '', license: '', phone: '', practice: '' };
+const emptyForm = {
+  name: '',
+  email: '',
+  password: '',
+  npi: '',
+  license: '',
+  phone: '',
+  practice: '',
+};
 
 export default function ProvidersPage() {
   const { data: session } = useSession();
@@ -45,6 +54,8 @@ export default function ProvidersPage() {
 
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name required'); return; }
+    if (!form.email) { setErrorMsg('Email required'); return; }
+    if (!form.password || form.password.length < 8) { setErrorMsg('Password must be at least 8 characters'); return; }
     setSubmitting(true);
     try {
       const res = await fetch('/api/providers', {
@@ -52,12 +63,15 @@ export default function ProvidersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to save provider');
       setSuccessMsg('Provider added!');
       setShowForm(false);
       setForm(emptyForm);
       fetchData();
-    } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Failed to save');
+    } finally { setSubmitting(false); }
   };
 
   const openAssignModal = async (provider: Provider) => {
@@ -68,11 +82,19 @@ export default function ProvidersPage() {
       try {
         const res = await fetch('/api/clinics');
         const data = await res.json();
-        setClinics((data.data || []).map((c: any) => ({ id: c.id, name: c.name })));
+        setClinics((data.data || []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
       } catch {
         setErrorMsg('Failed to load clinics');
       }
     }
+  };
+
+  const refreshSelectedProvider = async () => {
+    if (!selectedProvider) return;
+    const refreshedRes = await fetch('/api/providers');
+    const refreshedData = await refreshedRes.json();
+    const updatedProvider = (refreshedData.data || []).find((p: Provider) => p.id === selectedProvider.id);
+    if (updatedProvider) setSelectedProvider(updatedProvider);
   };
 
   const handleAssignClinic = async (clinicId: string) => {
@@ -90,14 +112,32 @@ export default function ProvidersPage() {
 
       setSuccessMsg('Provider assigned to clinic');
       await fetchData();
-
-      // Refresh selected provider data in modal
-      const refreshedRes = await fetch('/api/providers');
-      const refreshedData = await refreshedRes.json();
-      const updatedProvider = (refreshedData.data || []).find((p: Provider) => p.id === selectedProvider.id);
-      if (updatedProvider) setSelectedProvider(updatedProvider);
+      await refreshSelectedProvider();
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Failed to assign clinic');
+    } finally {
+      setAssigningClinicId(null);
+    }
+  };
+
+  const handleUnassignClinic = async (clinicId: string) => {
+    if (!selectedProvider) return;
+    setAssigningClinicId(clinicId);
+    try {
+      const res = await fetch(`/api/providers/${selectedProvider.id}/clinics`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clinicId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to unassign clinic');
+
+      setSuccessMsg('Provider unassigned from clinic');
+      await fetchData();
+      await refreshSelectedProvider();
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Failed to unassign clinic');
     } finally {
       setAssigningClinicId(null);
     }
@@ -136,12 +176,13 @@ export default function ProvidersPage() {
             <div className="flex-1 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Name', 'NPI', 'License', 'Phone', 'Practice', 'Clinics', 'Actions'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
+                  <tr>{['Name', 'Email', 'NPI', 'License', 'Phone', 'Practice', 'Clinics', 'Actions'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">{p.name}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600">{p.email || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{p.npi || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{p.license || '—'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{p.phone || '—'}</td>
@@ -171,7 +212,15 @@ export default function ProvidersPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">Add Provider</h2><button onClick={() => setShowForm(false)}><X className="h-5 w-5 text-slate-400" /></button></div>
             <div className="p-5 space-y-4">
-              {[['Name *', 'name', 'text', 'Dr. Jane Smith'], ['NPI Number', 'npi', 'text', '1234567890'], ['License', 'license', 'text', ''], ['Phone', 'phone', 'tel', ''], ['Practice', 'practice', 'text', '']].map(([label, key, type, placeholder]) => (
+              {[
+                ['Name *', 'name', 'text', 'Dr. Jane Smith'],
+                ['Email *', 'email', 'email', 'doctor@clinic.com'],
+                ['Password *', 'password', 'password', 'At least 8 characters'],
+                ['NPI Number', 'npi', 'text', '1234567890'],
+                ['License', 'license', 'text', ''],
+                ['Phone', 'phone', 'tel', ''],
+                ['Practice', 'practice', 'text', ''],
+              ].map(([label, key, type, placeholder]) => (
                 <div key={key}>
                   <label className="field-label">{label}</label>
                   <input type={type} value={(form as Record<string, string>)[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} className="field-input" placeholder={placeholder} />
@@ -204,13 +253,23 @@ export default function ProvidersPage() {
                       <p className="text-sm font-medium text-slate-900">{clinic.name}</p>
                       <p className="text-xs text-slate-500">{isAssigned ? 'Already assigned' : 'Not assigned'}</p>
                     </div>
-                    <button
-                      disabled={isAssigned || assigningClinicId === clinic.id}
-                      onClick={() => handleAssignClinic(clinic.id)}
-                      className="text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium transition"
-                    >
-                      {isAssigned ? 'Assigned' : assigningClinicId === clinic.id ? 'Assigning...' : 'Assign'}
-                    </button>
+                    {isAssigned ? (
+                      <button
+                        disabled={assigningClinicId === clinic.id}
+                        onClick={() => handleUnassignClinic(clinic.id)}
+                        className="text-xs bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50 px-3 py-1.5 rounded-lg font-medium transition"
+                      >
+                        {assigningClinicId === clinic.id ? 'Removing...' : 'Unassign'}
+                      </button>
+                    ) : (
+                      <button
+                        disabled={assigningClinicId === clinic.id}
+                        onClick={() => handleAssignClinic(clinic.id)}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium transition"
+                      >
+                        {assigningClinicId === clinic.id ? 'Assigning...' : 'Assign'}
+                      </button>
+                    )}
                   </div>
                 );
               })}

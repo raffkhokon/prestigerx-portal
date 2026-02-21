@@ -4,6 +4,34 @@ import { prisma } from '@/lib/prisma';
 import { encryptPHI, decryptPHI } from '@/lib/encryption';
 import { logPrescriptionAccess } from '@/lib/audit';
 
+type DecryptedPrescription = Record<string, unknown> & {
+  id?: string;
+  patientName?: string;
+  medicationName?: string;
+  providerName?: string;
+  patient?: Record<string, unknown> | null;
+};
+
+function parseClinicAddress(address?: string | null) {
+  if (!address) return { street: '', city: '', state: '', zip: '' };
+
+  // Expected common format: "Street, City, ST ZIP"
+  const parts = address.split(',').map((p) => p.trim());
+  const street = parts[0] || '';
+  const city = parts[1] || '';
+
+  let state = '';
+  let zip = '';
+  const stateZip = parts[2] || '';
+  const match = stateZip.match(/^([A-Za-z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+  if (match) {
+    state = match[1] || '';
+    zip = match[2] || '';
+  }
+
+  return { street, city, state, zip };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -50,7 +78,7 @@ export async function GET(req: NextRequest) {
       where.shippingMethod = shippingMethod;
     }
 
-    let decrypted: any[] = [];
+    let decrypted: DecryptedPrescription[] = [];
     let total = 0;
 
     if (search) {
@@ -66,7 +94,7 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      const allDecrypted: any[] = allPrescriptions.map((rx) => ({
+      const allDecrypted: DecryptedPrescription[] = allPrescriptions.map((rx) => ({
         ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
         patient: rx.patient
           ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
@@ -75,13 +103,17 @@ export async function GET(req: NextRequest) {
 
       const q = search.toLowerCase();
       const filtered = allDecrypted.filter((rx) => {
-        const patientFullName = `${rx?.patient?.firstName || ''} ${rx?.patient?.lastName || ''}`.trim();
+        const patient = rx.patient || {};
+        const patientFirst = String(patient.firstName || '');
+        const patientLast = String(patient.lastName || '');
+        const patientFullName = `${patientFirst} ${patientLast}`.trim();
+
         return (
-          (rx.patientName || '').toLowerCase().includes(q) ||
+          String(rx.patientName || '').toLowerCase().includes(q) ||
           patientFullName.toLowerCase().includes(q) ||
-          (rx.medicationName || '').toLowerCase().includes(q) ||
-          (rx.providerName || '').toLowerCase().includes(q) ||
-          (rx.id || '').toLowerCase().includes(q)
+          String(rx.medicationName || '').toLowerCase().includes(q) ||
+          String(rx.providerName || '').toLowerCase().includes(q) ||
+          String(rx.id || '').toLowerCase().includes(q)
         );
       });
 
@@ -170,11 +202,12 @@ export async function POST(req: NextRequest) {
     const decryptedPatient = decryptPHI(patient as unknown as Record<string, unknown>, 'patient') as Record<string, unknown>;
 
     if (body.shippingMethod === 'ship_to_clinic') {
+      const clinicAddress = parseClinicAddress(clinic.address);
       body.shippingRecipientName = clinic.name;
-      body.shippingStreetAddress = clinic.address || '';
-      body.shippingCity = '';
-      body.shippingState = '';
-      body.shippingZipCode = '';
+      body.shippingStreetAddress = clinicAddress.street;
+      body.shippingCity = clinicAddress.city;
+      body.shippingState = clinicAddress.state;
+      body.shippingZipCode = clinicAddress.zip;
       body.clinicAddress = clinic.address || '';
     } else {
       body.shippingMethod = 'ship_to_patient';

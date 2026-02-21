@@ -116,3 +116,50 @@ export async function POST(
     );
   }
 }
+
+// DELETE - Unassign provider from clinic (admin only)
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    const { id } = await params;
+
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { clinicId } = await req.json();
+
+    if (!clinicId) {
+      return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
+    }
+
+    const existing = await prisma.providerClinic.findUnique({
+      where: {
+        providerId_clinicId: {
+          providerId: id,
+          clinicId,
+        },
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
+    }
+
+    await prisma.providerClinic.update({
+      where: { id: existing.id },
+      data: { status: 'inactive' },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error unassigning provider from clinic:', error);
+    return NextResponse.json(
+      { error: 'Failed to unassign clinic' },
+      { status: 500 }
+    );
+  }
+}
