@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { Users, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ const emptyForm = {
 
 export default function PatientsPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -77,6 +79,12 @@ export default function PatientsPage() {
       .then((data) => setClinics((data.data || []).map((c: any) => ({ id: c.id, name: c.name }))))
       .catch(() => {});
   }, [session]);
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      openCreate();
+    }
+  }, [searchParams]);
 
   const openCreate = () => {
     setEditPatient(null);

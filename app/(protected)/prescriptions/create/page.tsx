@@ -229,7 +229,14 @@ export default function CreatePrescriptionPage() {
                 ))}
               </select>
               <p className="text-xs text-slate-500 mt-2">
-                Or <button className="text-blue-600 hover:underline">create new patient</button>
+                Or{' '}
+                <button
+                  type="button"
+                  onClick={() => router.push('/patients?create=1&from=prescription-create')}
+                  className="text-blue-600 hover:underline"
+                >
+                  create new patient
+                </button>
               </p>
             </div>
           )}
