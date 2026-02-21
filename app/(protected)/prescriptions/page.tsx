@@ -258,14 +258,14 @@ export default function PrescriptionsPage() {
                       <div className="text-xs text-slate-600">
                         {rx.medicationStrength} {rx.medicationForm && `(${rx.quantity}${rx.medicationForm})`}
                       </div>
-                      <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
-                        {rx.shippingMethod?.replace('_', ' ') || 'Ship to Patient'}
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[11px] rounded-full lowercase">
+                        {rx.shippingMethod?.replace(/_/g, ' ') || 'ship to patient'}
                       </span>
                     </td>
 
                     {/* Payment Status */}
                     <td className="px-4 py-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                      <span className={`inline-block px-3 py-1 rounded-full text-[11px] font-medium ${
                         rx.paymentStatus === 'paid' 
                           ? 'bg-green-100 text-green-700'
                           : rx.paymentStatus === 'pending'
@@ -278,7 +278,7 @@ export default function PrescriptionsPage() {
 
                     {/* Order Status */}
                     <td className="px-4 py-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                      <span className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase ${
                         rx.orderStatus === 'shipped' 
                           ? 'bg-purple-100 text-purple-700'
                           : rx.orderStatus === 'delivered'
