@@ -70,6 +70,11 @@ export async function POST(req: NextRequest) {
       body.clinicName = session.user.clinicName;
     }
 
+    // Admin users must explicitly choose a clinic when creating a patient
+    if (!body.clinicId) {
+      return NextResponse.json({ error: 'Clinic is required to create a patient' }, { status: 400 });
+    }
+
     const encrypted = encryptPHI(body, 'patient');
 
     const patient = await prisma.patient.create({
