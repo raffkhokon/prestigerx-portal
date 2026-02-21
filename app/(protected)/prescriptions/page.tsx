@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import PrescriptionDetails from '@/components/PrescriptionDetails';
 import SlideOver from '@/components/SlideOver';
+import StatusBadge from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import Link from 'next/link';
 
@@ -305,34 +306,12 @@ export default function PrescriptionsPage() {
 
                     {/* Payment Status */}
                     <td className="px-4 py-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-[11px] font-medium ${
-                        rx.paymentStatus === 'paid' 
-                          ? 'bg-green-100 text-green-700'
-                          : rx.paymentStatus === 'pending'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}>
-                        {rx.paymentStatus === 'paid' 
-                          ? 'Payment Successful' 
-                          : rx.paymentStatus === 'cancelled_by_prescriber'
-                          ? 'Cancelled by Prescriber'
-                          : rx.paymentStatus.replace(/_/g, ' ')}
-                      </span>
+                      <StatusBadge status={rx.paymentStatus} type="payment" />
                     </td>
 
                     {/* Order Status */}
                     <td className="px-4 py-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold uppercase ${
-                        rx.orderStatus === 'shipped' 
-                          ? 'bg-purple-100 text-purple-700'
-                          : rx.orderStatus === 'delivered'
-                          ? 'bg-green-100 text-green-700'
-                          : rx.orderStatus === 'processing'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {rx.orderStatus}
-                      </span>
+                      <StatusBadge status={rx.orderStatus} type="order" />
                     </td>
 
                     {/* Tracking */}
