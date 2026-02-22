@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
+import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronRight, Pill } from 'lucide-react';
 
 interface Pharmacy {
   id: string;
@@ -15,6 +15,16 @@ interface Pharmacy {
   status: string;
   supportedMedications: string[];
   createdAt: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  medicationStrength?: string;
+  medicationForm?: string;
+  price?: number;
+  status?: string;
+  createdAt?: string;
 }
 
 const emptyForm = {
@@ -45,6 +55,11 @@ export default function PharmaciesPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedItem, setSelectedItem] = useState<Pharmacy | null>(null);
+  const [panelTab, setPanelTab] = useState<'overview' | 'medications'>('overview');
+  const [pharmacyProducts, setPharmacyProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [productSort, setProductSort] = useState<'name' | 'newest' | 'price'>('name');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -60,6 +75,20 @@ export default function PharmaciesPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (!selectedItem?.id) {
+      setPharmacyProducts([]);
+      return;
+    }
+
+    setProductsLoading(true);
+    fetch(`/api/products?pharmacyId=${selectedItem.id}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setPharmacyProducts(data.data || []))
+      .catch(() => setPharmacyProducts([]))
+      .finally(() => setProductsLoading(false));
+  }, [selectedItem?.id]);
 
   const openCreate = () => {
     setEditItem(null);
@@ -132,6 +161,22 @@ export default function PharmaciesPage() {
 
   const activeCount = pharmacies.filter((p) => p.status === 'active').length;
   const inactiveCount = pharmacies.filter((p) => p.status !== 'active').length;
+
+  const filteredProducts = pharmacyProducts.filter((m) => {
+    if (!productSearch) return true;
+    const q = productSearch.toLowerCase();
+    return (
+      m.name?.toLowerCase().includes(q) ||
+      m.medicationStrength?.toLowerCase().includes(q) ||
+      m.medicationForm?.toLowerCase().includes(q)
+    );
+  });
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (productSort === 'newest') return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime();
+    if (productSort === 'price') return (a.price || 0) - (b.price || 0);
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <div className="h-full flex flex-col">
@@ -238,7 +283,11 @@ export default function PharmaciesPage() {
                 {sorted.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => setSelectedItem(p)}
+                    onClick={() => {
+                      setSelectedItem(p);
+                      setPanelTab('overview');
+                      setProductSearch('');
+                    }}
                     className={`text-left rounded-xl border-2 p-4 bg-white transition-all hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${selectedItem?.id === p.id ? 'border-blue-500 shadow-md' : 'border-slate-200'}`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -285,20 +334,100 @@ export default function PharmaciesPage() {
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="bg-slate-50 rounded-xl p-4 space-y-2">
-                  {selectedItem.contactName && <p className="text-sm text-slate-700">{selectedItem.contactName}</p>}
-                  {selectedItem.phone && <p className="text-sm text-slate-600 flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{selectedItem.phone}</p>}
-                  {selectedItem.email && <p className="text-sm text-slate-600 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{selectedItem.email}</p>}
-                  {selectedItem.address && <p className="text-sm text-slate-600 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{selectedItem.address}</p>}
+                <div className="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-50">
+                  <button
+                    onClick={() => setPanelTab('overview')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${panelTab === 'overview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    onClick={() => setPanelTab('medications')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${panelTab === 'medications' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Available Medications ({pharmacyProducts.length})
+                  </button>
                 </div>
-                {selectedItem.supportedMedications?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Supported Medications</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedItem.supportedMedications.map((med) => (
-                        <span key={med} className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">{med}</span>
-                      ))}
+
+                {panelTab === 'overview' ? (
+                  <>
+                    <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                      {selectedItem.contactName && <p className="text-sm text-slate-700">{selectedItem.contactName}</p>}
+                      {selectedItem.phone && <p className="text-sm text-slate-600 flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{selectedItem.phone}</p>}
+                      {selectedItem.email && <p className="text-sm text-slate-600 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{selectedItem.email}</p>}
+                      {selectedItem.address && <p className="text-sm text-slate-600 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{selectedItem.address}</p>}
                     </div>
+                    {selectedItem.supportedMedications?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Supported Medications</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedItem.supportedMedications.map((med) => (
+                            <span key={med} className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">{med}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search medications..."
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <select
+                        value={productSort}
+                        onChange={(e) => setProductSort(e.target.value as 'name' | 'newest' | 'price')}
+                        className="text-sm border border-slate-200 rounded-lg px-2 py-2 bg-white"
+                      >
+                        <option value="name">Name</option>
+                        <option value="newest">Newest</option>
+                        <option value="price">Price</option>
+                      </select>
+                    </div>
+
+                    {productsLoading ? (
+                      <div className="space-y-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="rounded-xl border border-slate-200 p-3 animate-pulse">
+                            <div className="h-4 w-1/2 bg-slate-200 rounded mb-2" />
+                            <div className="h-3 w-1/3 bg-slate-100 rounded" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : sortedProducts.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-slate-500">
+                        <Pill className="h-5 w-5 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm font-medium">No medications found for this pharmacy</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                        {sortedProducts.map((m) => (
+                          <div key={m.id} className="rounded-xl border border-slate-200 p-3 bg-white">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{m.name}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{m.medicationStrength || '-'} • {m.medicationForm || '-'}</p>
+                              </div>
+                              {m.status && (
+                                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${m.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                  {m.status}
+                                </span>
+                              )}
+                            </div>
+                            {typeof m.price === 'number' && (
+                              <p className="text-xs text-blue-700 font-medium mt-2">${m.price.toFixed(2)}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
