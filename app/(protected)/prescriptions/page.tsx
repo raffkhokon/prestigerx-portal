@@ -22,6 +22,8 @@ import StatusBadge from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import Link from 'next/link';
 
+const DEFAULT_MANIFEST_URL = 'https://storage.googleapis.com/onlyscripts-1752528969.firebasestorage.app/prescriptions/okPC0m1hblTW9Z7ZBipH/Jinelle_Resnick.pdf?GoogleAccessId=firebase-adminsdk-fbsvc%40onlyscripts-1752528969.iam.gserviceaccount.com&Expires=16730323200&Signature=NX24H5wfJUbHPBa%2BM%2FOqdOo7Drq0S9bteYU2JS8fmQB78ozJj3nPz5%2BRRP581Pw56welf1%2F%2Fw2vnU5%2Bzdilt7WODMiSLcd8qulWWLcreyNtCyoOItMIVbdWJAsldn%2BwPmfVjeblQMQo8VBoqGLmOic19eTd%2BlzmqafHlJSrL28EgzfC%2FjXoB9je0uE9b7UCxlFRHy8iLlDF9IkOomrktXZrogtJkModbqm0FEVqjPhTKftG%2F9fbUpx3SsTU1Yk8Ujp0qpTqBFMqafkFknNIR9UzmbmDeS8VM26Ei%2FVrp%2FVfAN2mE3ibCd%2BtFgVdImIDKtQdtd%2B33nIbnAYvjYjKmHg%3D%3D';
+
 interface Prescription {
   id: string;
   patientName: string;
@@ -54,6 +56,7 @@ interface Prescription {
   shippingMethod?: string;
   trackingNumber?: string;
   trackingCarrier?: string;
+  manifestUrl?: string;
   statusHistory?: any[];
 }
 
@@ -278,7 +281,8 @@ export default function PrescriptionsPage() {
               {prescriptions.map((rx) => {
                 const { date, time } = formatDateTime(rx.createdAt);
                 const trackingUrl = getTrackingUrl(rx.trackingCarrier, rx.trackingNumber);
-                
+                const manifestUrl = rx.manifestUrl || DEFAULT_MANIFEST_URL;
+
                 return (
                   <tr
                     key={rx.id}
@@ -361,6 +365,16 @@ export default function PrescriptionsPage() {
                           title="View Details"
                         >
                           <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(manifestUrl, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
+                          title="Open Prescription Manifest"
+                        >
+                          <FileText className="h-4 w-4" />
                         </button>
                         <button
                           onClick={(e) => e.stopPropagation()}
