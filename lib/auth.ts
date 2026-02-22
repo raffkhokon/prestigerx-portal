@@ -55,6 +55,21 @@ export const authOptions: NextAuthOptions = {
           console.log('[AUTH] Looking up user:', credentials.email);
           const user = await prisma.user.findUnique({
             where: { email: credentials.email as string },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              passwordHash: true,
+              role: true,
+              status: true,
+              clinicId: true,
+              clinicName: true,
+              npi: true,
+              dea: true,
+              license: true,
+              phone: true,
+              practice: true,
+            },
           });
 
           if (!user || user.status !== 'active') {
@@ -91,7 +106,6 @@ export const authOptions: NextAuthOptions = {
             license: user.license ?? undefined,
             phone: user.phone ?? undefined,
             practice: user.practice ?? undefined,
-            managerId: user.managerId ?? undefined,
           } as any;
         } catch (error) {
           console.error('[AUTH] Authorization error:', error);
