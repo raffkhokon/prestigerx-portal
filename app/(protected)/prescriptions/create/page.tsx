@@ -245,7 +245,7 @@ export default function CreatePrescriptionPage() {
                 >
                   {index < currentStep ? <Check className="h-5 w-5" /> : index + 1}
                 </div>
-                <span className="text-xs mt-2 text-center text-slate-600">{step}</span>
+                <span className="text-xs mt-2 text-center text-slate-950 font-medium">{step}</span>
               </div>
               {index < STEPS.length - 1 && (
                 <div
@@ -265,7 +265,7 @@ export default function CreatePrescriptionPage() {
           {/* Step 1: Select Patient */}
           {currentStep === 0 && (
             <div>
-              <h2 className="text-lg font-semibold mb-4">Select or Search Patient</h2>
+              <h2 className="text-lg font-semibold text-slate-950 mb-4">Select or Search Patient</h2>
               <select
                 value={form.patientId}
                 onChange={(e) => {
@@ -316,7 +316,7 @@ export default function CreatePrescriptionPage() {
                 </div>
               </div>
 
-              <h2 className="text-lg font-semibold mb-4">Select Clinic</h2>
+              <h2 className="text-lg font-semibold text-slate-950 mb-4">Select Clinic</h2>
               {assignedClinics.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
                   <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -374,7 +374,7 @@ export default function CreatePrescriptionPage() {
           {/* Step 3: Medication */}
           {currentStep === 2 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold mb-4">Medication Details</h2>
+              <h2 className="text-lg font-semibold text-slate-950 mb-4">Medication Details</h2>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -525,7 +525,7 @@ export default function CreatePrescriptionPage() {
           {/* Step 4: Shipping & Review */}
           {currentStep === 3 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold mb-4">Shipping & Review</h2>
+              <h2 className="text-lg font-semibold text-slate-950 mb-4">Shipping & Review</h2>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">

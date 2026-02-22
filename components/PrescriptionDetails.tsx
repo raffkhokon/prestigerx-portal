@@ -125,7 +125,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
 
   const Section = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-      <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+      <h3 className="text-base font-semibold text-slate-950 flex items-center gap-2">
         <Icon className="h-4 w-4 text-blue-600" />
         {title}
       </h3>
@@ -150,7 +150,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
       {/* Status Section */}
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-semibold text-slate-900">Status</h3>
+          <h3 className="text-base font-semibold text-slate-950">Status</h3>
           {!readOnly && (
             !editingStatus ? (
               <button
