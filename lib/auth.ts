@@ -17,7 +17,6 @@ declare module 'next-auth' {
       license?: string;
       phone?: string;
       practice?: string;
-      managerId?: string;
     } & DefaultSession['user'];
   }
 }
@@ -32,7 +31,6 @@ interface CustomUser {
   license?: string;
   phone?: string;
   practice?: string;
-  managerId?: string;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -52,25 +50,9 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          const emailInput = (credentials.email as string).trim();
-          console.log('[AUTH] Looking up user:', emailInput);
-          const user = await prisma.user.findFirst({
-            where: { email: { equals: emailInput, mode: 'insensitive' } },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              passwordHash: true,
-              role: true,
-              status: true,
-              clinicId: true,
-              clinicName: true,
-              npi: true,
-              dea: true,
-              license: true,
-              phone: true,
-              practice: true,
-            },
+          console.log('[AUTH] Looking up user:', credentials.email);
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
           });
 
           if (!user || user.status !== 'active') {
@@ -129,7 +111,6 @@ export const authOptions: NextAuthOptions = {
         token.license = customUser.license;
         token.phone = customUser.phone;
         token.practice = customUser.practice;
-        token.managerId = customUser.managerId;
       }
       return token;
     },
@@ -144,7 +125,6 @@ export const authOptions: NextAuthOptions = {
         session.user.license = token.license as string | undefined;
         session.user.phone = token.phone as string | undefined;
         session.user.practice = token.practice as string | undefined;
-        session.user.managerId = token.managerId as string | undefined;
       }
       return session;
     },
