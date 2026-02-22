@@ -24,6 +24,20 @@ import Link from 'next/link';
 
 const DEFAULT_MANIFEST_URL = 'https://storage.googleapis.com/onlyscripts-1752528969.firebasestorage.app/prescriptions/okPC0m1hblTW9Z7ZBipH/Jinelle_Resnick.pdf?GoogleAccessId=firebase-adminsdk-fbsvc%40onlyscripts-1752528969.iam.gserviceaccount.com&Expires=16730323200&Signature=NX24H5wfJUbHPBa%2BM%2FOqdOo7Drq0S9bteYU2JS8fmQB78ozJj3nPz5%2BRRP581Pw56welf1%2F%2Fw2vnU5%2Bzdilt7WODMiSLcd8qulWWLcreyNtCyoOItMIVbdWJAsldn%2BwPmfVjeblQMQo8VBoqGLmOic19eTd%2BlzmqafHlJSrL28EgzfC%2FjXoB9je0uE9b7UCxlFRHy8iLlDF9IkOomrktXZrogtJkModbqm0FEVqjPhTKftG%2F9fbUpx3SsTU1Yk8Ujp0qpTqBFMqafkFknNIR9UzmbmDeS8VM26Ei%2FVrp%2FVfAN2mE3ibCd%2BtFgVdImIDKtQdtd%2B33nIbnAYvjYjKmHg%3D%3D';
 
+function buildManifestUrl(rx: Pick<Prescription, 'id' | 'patientName' | 'createdAt' | 'manifestUrl'>): string {
+  if (rx.manifestUrl) return rx.manifestUrl;
+
+  const patientSlug = (rx.patientName || 'Patient')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^A-Za-z0-9_-]/g, '');
+
+  const datePart = rx.createdAt ? new Date(rx.createdAt).toISOString().slice(0, 10) : '';
+  const filename = `${patientSlug}${datePart ? `_${datePart}` : ''}.pdf`;
+
+  return `https://storage.googleapis.com/onlyscripts-1752528969.firebasestorage.app/prescriptions/${encodeURIComponent(rx.id)}/${encodeURIComponent(filename)}`;
+}
+
 interface Prescription {
   id: string;
   patientName: string;
@@ -281,7 +295,7 @@ export default function PrescriptionsPage() {
               {prescriptions.map((rx) => {
                 const { date, time } = formatDateTime(rx.createdAt);
                 const trackingUrl = getTrackingUrl(rx.trackingCarrier, rx.trackingNumber);
-                const manifestUrl = rx.manifestUrl || DEFAULT_MANIFEST_URL;
+                const manifestUrl = buildManifestUrl(rx) || DEFAULT_MANIFEST_URL;
 
                 return (
                   <tr
