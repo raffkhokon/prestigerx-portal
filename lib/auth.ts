@@ -52,9 +52,10 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          console.log('[AUTH] Looking up user:', credentials.email);
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email as string },
+          const emailInput = (credentials.email as string).trim();
+          console.log('[AUTH] Looking up user:', emailInput);
+          const user = await prisma.user.findFirst({
+            where: { email: { equals: emailInput, mode: 'insensitive' } },
             select: {
               id: true,
               email: true,
