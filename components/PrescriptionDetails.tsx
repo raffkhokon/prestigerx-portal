@@ -124,23 +124,23 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
   };
 
   const Section = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+      <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
         <Icon className="h-4 w-4 text-blue-600" />
         {title}
       </h3>
-      <div className="pl-6 space-y-2">
+      <div className="space-y-2">
         {children}
       </div>
-    </div>
+    </section>
   );
 
   const Field = ({ label, value }: { label: string; value?: string | number | boolean }) => {
     if (!value && value !== 0) return null;
     return (
-      <div className="flex justify-between">
-        <span className="text-sm text-slate-600">{label}:</span>
-        <span className="text-sm font-medium text-slate-900">{value.toString()}</span>
+      <div className="grid grid-cols-[140px_1fr] items-start gap-3 py-1.5 border-b border-slate-100 last:border-b-0">
+        <span className="text-sm text-slate-500">{label}</span>
+        <span className="text-sm font-medium text-slate-900 break-words">{value.toString()}</span>
       </div>
     );
   };
@@ -148,14 +148,14 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
   return (
     <div className="space-y-6">
       {/* Status Section */}
-      <div className="p-4 bg-slate-50 rounded-lg">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-900">Status</h3>
+          <h3 className="text-base font-semibold text-slate-900">Status</h3>
           {!readOnly && (
             !editingStatus ? (
               <button
                 onClick={() => setEditingStatus(true)}
-                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-slate-200 bg-slate-50 text-blue-700 hover:bg-blue-50 font-medium transition"
               >
                 <Edit2 className="h-3.5 w-3.5" />
                 Edit Status
@@ -189,13 +189,13 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
         )}
 
         {editingStatus ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">Order Status</label>
               <select
                 value={orderStatus}
                 onChange={(e) => setOrderStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pending">Pending</option>
                 <option value="received">Received</option>
@@ -212,7 +212,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
               <select
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pending">Pending</option>
                 <option value="paid">Payment Successful</option>
@@ -222,12 +222,12 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <StatusBadge status={orderStatus} type="order" />
             <StatusBadge status={paymentStatus} type="payment" />
           </div>
         )}
-      </div>
+      </section>
 
       {/* Patient Information */}
       <Section icon={User} title="Patient Information">
