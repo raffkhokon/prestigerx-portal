@@ -58,9 +58,16 @@ export default function PatientsPage() {
   const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/patients?limit=100');
+      const res = await fetch('/api/patients?limit=100', { cache: 'no-store' });
       const data = await res.json();
-      setPatients(data.data || []);
+      const nextPatients = data.data || [];
+      setPatients(nextPatients);
+
+      // Keep detail panel in sync with freshest row data
+      setSelectedPatient((prev) => {
+        if (!prev) return prev;
+        return nextPatients.find((p: Patient) => p.id === prev.id) || prev;
+      });
     } catch {
       setErrorMsg('Failed to load patients');
     } finally {
