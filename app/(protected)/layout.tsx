@@ -12,6 +12,7 @@ import {
   User,
   Package,
   CreditCard,
+  DollarSign,
   LogOut,
   Pill,
   ShieldCheck,
@@ -26,9 +27,10 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   adminOnly?: boolean;
+  salesOnly?: boolean;
 }
 
-const navSections = [
+const navSections: Array<{ title: string; adminOnly?: boolean; items: NavItem[] }> = [
   {
     title: 'RX',
     items: [
@@ -41,6 +43,7 @@ const navSections = [
     title: 'DATA',
     items: [
       { href: '/billing', label: 'Billing', icon: <CreditCard className="h-4 w-4" /> },
+      { href: '/sales', label: 'Sales', icon: <DollarSign className="h-4 w-4" />, salesOnly: true },
       { href: '/providers', label: 'Providers', icon: <Hospital className="h-4 w-4" />, adminOnly: true },
     ],
   },
@@ -62,6 +65,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAdmin = session?.user?.role === 'admin';
+  const isSales = isAdmin || ['sales_manager', 'sales_rep'].includes(session?.user?.role || '');
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -143,7 +147,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 py-4 px-3 space-y-6">
           {navSections.map((section) => {
             if (section.adminOnly && !isAdmin) return null;
-            const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin);
+            const visibleItems = section.items.filter((item) => {
+              if (item.adminOnly && !isAdmin) return false;
+              if (item.salesOnly && !isSales) return false;
+              return true;
+            });
             if (visibleItems.length === 0) return null;
 
             return (

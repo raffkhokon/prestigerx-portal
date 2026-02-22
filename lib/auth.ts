@@ -17,6 +17,7 @@ declare module 'next-auth' {
       license?: string;
       phone?: string;
       practice?: string;
+      managerId?: string;
     } & DefaultSession['user'];
   }
 }
@@ -31,6 +32,7 @@ interface CustomUser {
   license?: string;
   phone?: string;
   practice?: string;
+  managerId?: string;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -89,6 +91,7 @@ export const authOptions: NextAuthOptions = {
             license: user.license ?? undefined,
             phone: user.phone ?? undefined,
             practice: user.practice ?? undefined,
+            managerId: user.managerId ?? undefined,
           } as any;
         } catch (error) {
           console.error('[AUTH] Authorization error:', error);
@@ -111,6 +114,7 @@ export const authOptions: NextAuthOptions = {
         token.license = customUser.license;
         token.phone = customUser.phone;
         token.practice = customUser.practice;
+        token.managerId = customUser.managerId;
       }
       return token;
     },
@@ -125,6 +129,7 @@ export const authOptions: NextAuthOptions = {
         session.user.license = token.license as string | undefined;
         session.user.phone = token.phone as string | undefined;
         session.user.practice = token.practice as string | undefined;
+        session.user.managerId = token.managerId as string | undefined;
       }
       return session;
     },
