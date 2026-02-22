@@ -168,21 +168,41 @@ export default function PharmaciesPage() {
               <p className="font-medium">No pharmacies found</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-              {filtered.map((p) => (
-                <button key={p.id} onClick={() => setSelectedItem(selectedItem?.id === p.id ? null : p)} className={`w-full text-left px-4 py-3.5 hover:bg-slate-50 transition ${selectedItem?.id === p.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900 text-sm">{p.name}</p>
-                      <p className="text-slate-500 text-xs mt-0.5">{p.contactName || 'No contact'} • {p.type}</p>
-                      {p.supportedMedications?.length > 0 && (
-                        <p className="text-slate-400 text-xs mt-0.5">{p.supportedMedications.slice(0, 3).join(', ')}{p.supportedMedications.length > 3 && ` +${p.supportedMedications.length - 3} more`}</p>
-                      )}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filtered.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedItem(selectedItem?.id === p.id ? null : p)}
+                    className={`text-left rounded-xl border p-4 bg-white hover:shadow-sm transition ${selectedItem?.id === p.id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 text-sm truncate">{p.name}</p>
+                        <p className="text-slate-500 text-xs mt-0.5">{p.contactName || 'No contact'} • {p.type}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{p.status}</span>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{p.status}</span>
-                  </div>
-                </button>
-              ))}
+
+                    <div className="mt-3 space-y-1.5">
+                      {p.phone && <p className="text-xs text-slate-600 flex items-center gap-1.5"><Phone className="h-3 w-3" />{p.phone}</p>}
+                      {p.email && <p className="text-xs text-slate-600 flex items-center gap-1.5 truncate"><Mail className="h-3 w-3" />{p.email}</p>}
+                      {p.address && <p className="text-xs text-slate-500 flex items-start gap-1.5"><MapPin className="h-3 w-3 mt-0.5" />{p.address}</p>}
+                    </div>
+
+                    {p.supportedMedications?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {p.supportedMedications.slice(0, 3).map((med) => (
+                          <span key={med} className="text-[11px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{med}</span>
+                        ))}
+                        {p.supportedMedications.length > 3 && (
+                          <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">+{p.supportedMedications.length - 3} more</span>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
