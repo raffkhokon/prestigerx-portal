@@ -7,10 +7,39 @@ import { logPrescriptionAccess } from '@/lib/audit';
 type DecryptedPrescription = Record<string, unknown> & {
   id?: string;
   patientName?: string;
+  patientDob?: string;
+  patientGender?: string;
+  patientAllergies?: string;
   medicationName?: string;
   providerName?: string;
   patient?: Record<string, unknown> | null;
 };
+
+function normalizePrescription(rx: DecryptedPrescription): DecryptedPrescription {
+  const patient = (rx.patient || {}) as Record<string, unknown>;
+  const first = String(patient.firstName || '').trim();
+  const last = String(patient.lastName || '').trim();
+  const fullName = `${first} ${last}`.trim();
+
+  const allergiesRaw = patient.allergies;
+  const allergies = Array.isArray(allergiesRaw)
+    ? allergiesRaw.join(', ')
+    : (typeof allergiesRaw === 'string' ? allergiesRaw : '');
+
+  return {
+    ...rx,
+    patientName: String(rx.patientName || fullName || '').trim(),
+    patientDob: String(rx.patientDob || patient.dateOfBirth || '').trim(),
+    patientGender: String(rx.patientGender || patient.gender || '').trim(),
+    patientAllergies: String(rx.patientAllergies || allergies || '').trim(),
+    patientPhone: String(patient.phone || '').trim(),
+    patientEmail: String(patient.email || '').trim(),
+    patientStreetAddress: String(patient.streetAddress || '').trim(),
+    patientCity: String(patient.city || '').trim(),
+    patientState: String(patient.state || '').trim(),
+    patientZipCode: String(patient.zipCode || '').trim(),
+  };
+}
 
 function parseClinicAddress(address?: string | null) {
   if (!address) return { street: '', city: '', state: '', zip: '' };
@@ -87,19 +116,36 @@ export async function GET(req: NextRequest) {
         where,
         orderBy: { [sortBy]: sortOrder as 'asc' | 'desc' },
         include: {
-          patient: { select: { id: true, firstName: true, lastName: true } },
+          patient: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              dateOfBirth: true,
+              gender: true,
+              phone: true,
+              email: true,
+              allergies: true,
+              streetAddress: true,
+              city: true,
+              state: true,
+              zipCode: true,
+            },
+          },
           pharmacy: { select: { id: true, name: true } },
           clinic: { select: { id: true, name: true } },
           provider: { select: { id: true, name: true, npi: true, phone: true } },
         },
       });
 
-      const allDecrypted: DecryptedPrescription[] = allPrescriptions.map((rx) => ({
-        ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
-        patient: rx.patient
-          ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
-          : null,
-      }));
+      const allDecrypted: DecryptedPrescription[] = allPrescriptions.map((rx) =>
+        normalizePrescription({
+          ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
+          patient: rx.patient
+            ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
+            : null,
+        })
+      );
 
       const q = search.toLowerCase();
       const filtered = allDecrypted.filter((rx) => {
@@ -127,7 +173,22 @@ export async function GET(req: NextRequest) {
           take: limit,
           orderBy: { [sortBy]: sortOrder as 'asc' | 'desc' },
           include: {
-            patient: { select: { id: true, firstName: true, lastName: true } },
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                dateOfBirth: true,
+                gender: true,
+                phone: true,
+                email: true,
+                allergies: true,
+                streetAddress: true,
+                city: true,
+                state: true,
+                zipCode: true,
+              },
+            },
             pharmacy: { select: { id: true, name: true } },
             clinic: { select: { id: true, name: true } },
             provider: { select: { id: true, name: true, npi: true, phone: true } },
@@ -137,12 +198,14 @@ export async function GET(req: NextRequest) {
       ]);
 
       total = count;
-      decrypted = prescriptions.map((rx) => ({
-        ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
-        patient: rx.patient
-          ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
-          : null,
-      }));
+      decrypted = prescriptions.map((rx) =>
+        normalizePrescription({
+          ...decryptPHI(rx as unknown as Record<string, unknown>, 'prescription'),
+          patient: rx.patient
+            ? decryptPHI(rx.patient as unknown as Record<string, unknown>, 'patient')
+            : null,
+        })
+      );
     }
 
     // Audit log

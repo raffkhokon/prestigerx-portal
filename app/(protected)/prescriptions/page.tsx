@@ -29,6 +29,12 @@ interface Prescription {
   patientDob?: string;
   patientGender?: string;
   patientAllergies?: string;
+  patientPhone?: string;
+  patientEmail?: string;
+  patientStreetAddress?: string;
+  patientCity?: string;
+  patientState?: string;
+  patientZipCode?: string;
   medicationName?: string;
   medicationStrength?: string;
   medicationForm?: string;

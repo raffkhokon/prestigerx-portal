@@ -24,6 +24,12 @@ interface PrescriptionDetailsProps {
     patientDob?: string;
     patientGender?: string;
     patientAllergies?: string;
+    patientPhone?: string;
+    patientEmail?: string;
+    patientStreetAddress?: string;
+    patientCity?: string;
+    patientState?: string;
+    patientZipCode?: string;
     medicationName?: string;
     medicationStrength?: string;
     medicationForm?: string;
@@ -67,6 +73,13 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
     prescription.shippingCity,
     prescription.shippingState,
     prescription.shippingZipCode,
+  ].filter(Boolean).join(', ');
+
+  const patientAddress = [
+    prescription.patientStreetAddress,
+    prescription.patientCity,
+    prescription.patientState,
+    prescription.patientZipCode,
   ].filter(Boolean).join(', ');
   const [orderStatus, setOrderStatus] = useState(prescription.orderStatus);
   const [paymentStatus, setPaymentStatus] = useState(prescription.paymentStatus);
@@ -234,6 +247,9 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
         <Field label="Name" value={prescription.patientName} />
         <Field label="Date of Birth" value={prescription.patientDob} />
         <Field label="Gender" value={prescription.patientGender} />
+        <Field label="Phone" value={prescription.patientPhone} />
+        <Field label="Email" value={prescription.patientEmail} />
+        <Field label="Address" value={patientAddress} />
         {prescription.patientAllergies && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-xs font-semibold text-red-800 mb-1">⚠️ Allergies:</p>
