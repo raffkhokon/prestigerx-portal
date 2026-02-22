@@ -299,7 +299,7 @@ export default function PrescriptionsPage() {
                     {/* Patient */}
                     <td className="px-4 py-4">
                       <div className="text-sm font-medium text-slate-900">{rx.patientName}</div>
-                      <div className="text-xs text-slate-500">patient@email.com</div>
+                      <div className="text-xs text-slate-500">{rx.patientEmail || '-'}</div>
                     </td>
 
                     {/* Medication */}
