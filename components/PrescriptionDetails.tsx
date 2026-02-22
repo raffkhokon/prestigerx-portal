@@ -139,8 +139,8 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
     if (!value && value !== 0) return null;
     return (
       <div className="grid grid-cols-[140px_1fr] items-start gap-3 py-1.5 border-b border-slate-100 last:border-b-0">
-        <span className="text-sm text-slate-500">{label}</span>
-        <span className="text-sm font-medium text-slate-900 break-words">{value.toString()}</span>
+        <span className="text-sm text-slate-700 font-medium">{label}</span>
+        <span className="text-sm font-semibold text-slate-950 break-words">{value.toString()}</span>
       </div>
     );
   };
@@ -237,7 +237,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
         {prescription.patientAllergies && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-xs font-semibold text-red-800 mb-1">⚠️ Allergies:</p>
-            <p className="text-sm text-red-700">{prescription.patientAllergies}</p>
+            <p className="text-sm text-red-900 font-medium">{prescription.patientAllergies}</p>
           </div>
         )}
       </Section>
@@ -253,7 +253,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
         {prescription.directions && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs font-semibold text-blue-800 mb-1">Directions:</p>
-            <p className="text-sm text-blue-700">{prescription.directions}</p>
+            <p className="text-sm text-blue-950 font-medium">{prescription.directions}</p>
           </div>
         )}
         <Field label="Written Date" value={prescription.writtenDate} />
@@ -278,7 +278,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
         {shippingAddress && (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs font-semibold text-amber-800 mb-1">Shipping Address:</p>
-            <p className="text-sm text-amber-700">{shippingAddress}</p>
+            <p className="text-sm text-amber-900 font-medium">{shippingAddress}</p>
           </div>
         )}
         {prescription.trackingNumber && (
@@ -287,9 +287,9 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
               <Truck className="h-4 w-4 text-purple-600" />
               <p className="text-xs font-semibold text-purple-800">Tracking:</p>
             </div>
-            <p className="text-sm font-mono text-purple-700">{prescription.trackingNumber}</p>
+            <p className="text-sm font-mono text-purple-900 font-semibold">{prescription.trackingNumber}</p>
             {prescription.trackingCarrier && (
-              <p className="text-xs text-purple-600 mt-1">Carrier: {prescription.trackingCarrier}</p>
+              <p className="text-xs text-purple-800 mt-1 font-medium">Carrier: {prescription.trackingCarrier}</p>
             )}
           </div>
         )}
