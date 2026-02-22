@@ -195,7 +195,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
               <select
                 value={orderStatus}
                 onChange={(e) => setOrderStatus(e.target.value)}
-                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-sm text-slate-950 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pending">Pending</option>
                 <option value="received">Received</option>
@@ -212,7 +212,7 @@ export default function PrescriptionDetails({ prescription, onUpdate, readOnly =
               <select
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value)}
-                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-sm text-slate-950 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pending">Pending</option>
                 <option value="paid">Payment Successful</option>
