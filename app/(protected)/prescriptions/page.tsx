@@ -189,7 +189,7 @@ export default function PrescriptionsPage() {
             placeholder="Search by patient name, medication, provider, or prescription ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm text-black placeholder:text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
@@ -470,13 +470,13 @@ function FilterDropdown({
   
   return (
     <div className="relative inline-block">
-      <label className="absolute -top-1.5 left-2 px-1 bg-white text-[10px] font-medium text-slate-600 z-10">
+      <label className="absolute -top-1.5 left-2 px-1 bg-white text-[10px] font-medium text-black z-10">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-2.5 pr-7 py-1.5 border border-slate-300 rounded text-xs appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition min-w-[180px]"
+        className="pl-2.5 pr-7 py-1.5 border border-slate-300 rounded text-xs text-black appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition min-w-[180px]"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
