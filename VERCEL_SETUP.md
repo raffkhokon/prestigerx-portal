@@ -11,13 +11,6 @@
 1. Go to **Vercel Dashboard** → **PrestigeRx** → **Settings** → **Environment Variables**
 2. Add these variables (all environments: Production, Preview, Development):
 
-| Key | Value | Environment |
-|-----|-------|-------------|
-| `HIPAA_ENCRYPTION_KEY` | `430fb983c95f61d1212d66bad47e104690da0258683f83d195662b5ba498f74e` | All |
-| `DATABASE_URL` | `postgresql://user:pass@host:5432/prestigerx?schema=public` | All |
-| `DIRECT_URL` | `postgresql://user:pass@host:5432/prestigerx?schema=public` | All |
-| `NODE_ENV` | `production` | Production |
-
 **Important:** 
 - Use the **pooling connection string** for `DATABASE_URL` (PgBouncer for Neon/Supabase)
 - Use the **direct connection string** for `DIRECT_URL` (for migrations)
