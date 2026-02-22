@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin } from 'lucide-react';
+import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronRight } from 'lucide-react';
 
 interface Pharmacy {
   id: string;
@@ -34,6 +34,9 @@ export default function PharmaciesPage() {
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'compounding' | 'retail' | 'specialty'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'newest' | 'status'>('name');
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<Pharmacy | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -114,10 +117,21 @@ export default function PharmaciesPage() {
   };
 
   const filtered = pharmacies.filter((p) => {
-    if (!search) return true;
     const q = search.toLowerCase();
-    return p.name?.toLowerCase().includes(q) || p.contactName?.toLowerCase().includes(q);
+    const matchesSearch = !search || p.name?.toLowerCase().includes(q) || p.contactName?.toLowerCase().includes(q);
+    const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+    const matchesType = typeFilter === 'all' || p.type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
   });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortBy === 'status') return a.status.localeCompare(b.status);
+    return a.name.localeCompare(b.name);
+  });
+
+  const activeCount = pharmacies.filter((p) => p.status === 'active').length;
+  const inactiveCount = pharmacies.filter((p) => p.status !== 'active').length;
 
   return (
     <div className="h-full flex flex-col">
@@ -153,36 +167,109 @@ export default function PharmaciesPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <div className={`${selectedItem ? 'w-1/2' : 'flex-1'} flex flex-col bg-white border-r border-slate-200 overflow-hidden`}>
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4 border-b border-slate-100 space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input type="text" placeholder="Search pharmacies..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => setStatusFilter('all')} className={`text-xs px-2.5 py-1 rounded-full border ${statusFilter === 'all' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}>All</button>
+              <button onClick={() => setStatusFilter('active')} className={`text-xs px-2.5 py-1 rounded-full border ${statusFilter === 'active' ? 'bg-green-50 border-green-300 text-green-700' : 'bg-white border-slate-200 text-slate-600'}`}>Active</button>
+              <button onClick={() => setStatusFilter('inactive')} className={`text-xs px-2.5 py-1 rounded-full border ${statusFilter === 'inactive' ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-white border-slate-200 text-slate-600'}`}>Inactive</button>
+
+              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as 'all' | 'compounding' | 'retail' | 'specialty')} className="ml-1 text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                <option value="all">All types</option>
+                <option value="compounding">Compounding</option>
+                <option value="retail">Retail</option>
+                <option value="specialty">Specialty</option>
+              </select>
+
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'name' | 'newest' | 'status')} className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white">
+                <option value="name">Sort: Name</option>
+                <option value="newest">Sort: Newest</option>
+                <option value="status">Sort: Status</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] text-slate-500">Total</p>
+                <p className="text-sm font-semibold text-slate-900">{pharmacies.length}</p>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                <p className="text-[11px] text-green-700">Active</p>
+                <p className="text-sm font-semibold text-green-800">{activeCount}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[11px] text-slate-500">Inactive</p>
+                <p className="text-sm font-semibold text-slate-700">{inactiveCount}</p>
+              </div>
+            </div>
           </div>
 
           {loading ? (
-            <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
-          ) : filtered.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border-2 border-slate-200 bg-white p-4 animate-pulse">
+                    <div className="h-4 w-2/3 bg-slate-200 rounded mb-2" />
+                    <div className="h-3 w-1/3 bg-slate-100 rounded mb-4" />
+                    <div className="h-3 w-full bg-slate-100 rounded mb-2" />
+                    <div className="h-3 w-5/6 bg-slate-100 rounded mb-2" />
+                    <div className="h-3 w-4/6 bg-slate-100 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : sorted.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 py-16">
               <Building2 className="h-12 w-12 mb-3 opacity-30" />
               <p className="font-medium">No pharmacies found</p>
+              {isAdmin && (
+                <button onClick={openCreate} className="mt-4 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                  Add first pharmacy
+                </button>
+              )}
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-              {filtered.map((p) => (
-                <button key={p.id} onClick={() => setSelectedItem(selectedItem?.id === p.id ? null : p)} className={`w-full text-left px-4 py-3.5 hover:bg-slate-50 transition ${selectedItem?.id === p.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900 text-sm">{p.name}</p>
-                      <p className="text-slate-500 text-xs mt-0.5">{p.contactName || 'No contact'} • {p.type}</p>
-                      {p.supportedMedications?.length > 0 && (
-                        <p className="text-slate-400 text-xs mt-0.5">{p.supportedMedications.slice(0, 3).join(', ')}{p.supportedMedications.length > 3 && ` +${p.supportedMedications.length - 3} more`}</p>
-                      )}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {sorted.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedItem(p)}
+                    className={`text-left rounded-xl border-2 p-4 bg-white transition-all hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${selectedItem?.id === p.id ? 'border-blue-500 shadow-md' : 'border-slate-200'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center flex-shrink-0">
+                          <Building2 className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 text-sm truncate">{p.name}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full capitalize">{p.type}</span>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{p.status}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{p.status}</span>
-                  </div>
-                </button>
-              ))}
+
+                    <div className="mt-3 space-y-1.5">
+                      <p className="text-xs text-slate-600 flex items-center gap-1.5"><Phone className="h-3 w-3" />{p.phone || 'No phone listed'}</p>
+                      <p className="text-xs text-slate-600 flex items-center gap-1.5 truncate"><Mail className="h-3 w-3" />{p.email || 'No email listed'}</p>
+                      <p className="text-xs text-slate-500 flex items-start gap-1.5"><MapPin className="h-3 w-3 mt-0.5" />{p.address || 'No address listed'}</p>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <p className="text-[11px] text-slate-500">{p.supportedMedications?.length || 0} supported meds</p>
+                      <p className="text-[11px] font-medium text-blue-700">View details</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
