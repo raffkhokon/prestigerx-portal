@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { Users, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, User } from 'lucide-react';
+import { Users, Plus, Search, Loader2, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
 interface Patient {
@@ -58,9 +58,16 @@ export default function PatientsPage() {
   const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/patients?limit=100');
+      const res = await fetch('/api/patients?limit=100', { cache: 'no-store' });
       const data = await res.json();
-      setPatients(data.data || []);
+      const nextPatients = data.data || [];
+      setPatients(nextPatients);
+
+      // Keep detail panel in sync with freshest row data
+      setSelectedPatient((prev) => {
+        if (!prev) return prev;
+        return nextPatients.find((p: Patient) => p.id === prev.id) || prev;
+      });
     } catch {
       setErrorMsg('Failed to load patients');
     } finally {
@@ -220,33 +227,35 @@ export default function PatientsPage() {
               <p className="font-medium">No patients found</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-              {filtered.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPatient(selectedPatient?.id === p.id ? null : p)}
-                  className={`w-full text-left px-4 py-3.5 hover:bg-slate-50 transition ${selectedPatient?.id === p.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <User className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 text-sm">
+            <div className="flex-1 overflow-auto bg-white">
+              <table className="w-full">
+                <thead className="bg-white border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Patient</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">DOB</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Clinic</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((p) => (
+                    <tr
+                      key={p.id}
+                      onClick={() => setSelectedPatient(p)}
+                      className={`cursor-pointer hover:bg-slate-50 transition ${selectedPatient?.id === p.id ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                         {p.firstName} {p.lastName}
-                      </p>
-                      <p className="text-slate-500 text-xs truncate">
-                        {p.email || p.phone || 'No contact info'} {p.dateOfBirth && `• DOB: ${p.dateOfBirth}`}
-                      </p>
-                    </div>
-                    {p.consentGiven && (
-                      <div className="ml-auto">
-                        <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Consent ✓</span>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{p.dateOfBirth || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{p.email || p.phone || 'No contact info'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{p.clinicName || session?.user?.clinicName || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{formatDate(p.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
