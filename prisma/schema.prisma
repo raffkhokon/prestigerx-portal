@@ -202,6 +202,14 @@ model Prescription {
   orderStatus         String               @default("new") // new, received, processed, shipped, delivered, cancelled
   trackingNumber      String?
   trackingCarrier     String?
+
+  // Manifest metadata (stored in Neon)
+  manifestPath        String?
+  manifestFileName    String?
+  manifestMimeType    String?
+  manifestSizeBytes   Int?
+  manifestUploadedAt  DateTime?
+  manifestChecksum    String?
   
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt

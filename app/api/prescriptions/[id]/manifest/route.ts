@@ -41,6 +41,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         createdAt: true,
         patientName: true,
         manifestPath: true,
+        manifestFileName: true,
+        manifestMimeType: true,
       },
     });
 
@@ -73,17 +75,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Manifest not found' }, { status: 404 });
     }
 
-    const [signedUrl] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + 15 * 60 * 1000,
-    });
+    const [buffer] = await file.download();
 
-    return NextResponse.json({ url: signedUrl });
+    const filename =
+      prescription.manifestFileName ||
+      objectPath.split('/').pop() ||
+      `${prescription.id}.pdf`;
+
+    return new NextResponse(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        'Content-Type': prescription.manifestMimeType || 'application/pdf',
+        'Content-Disposition': `inline; filename="${filename}"`,
+        'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+      },
+    });
   } catch (error) {
-    console.error('GET /api/prescriptions/[id]/manifest-url error:', error);
+    console.error('GET /api/prescriptions/[id]/manifest error:', error);
     return NextResponse.json(
-      { error: 'Unable to generate secure manifest link' },
+      { error: 'Unable to load manifest' },
       { status: 500 }
     );
   }

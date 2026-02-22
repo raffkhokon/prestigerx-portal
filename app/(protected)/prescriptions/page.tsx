@@ -151,18 +151,8 @@ export default function PrescriptionsPage() {
     return carriers[carrier.toLowerCase()] || null;
   };
 
-  const openManifest = async (rx: Prescription) => {
-    try {
-      const res = await fetch(`/api/prescriptions/${rx.id}/manifest-url`);
-      const data = await res.json();
-      if (!res.ok || !data?.url) {
-        throw new Error(data?.error || 'Manifest unavailable');
-      }
-      window.open(data.url, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      console.error('Manifest open failed:', error);
-      alert('Could not open manifest. Please verify manifest exists and storage credentials are configured.');
-    }
+  const openManifest = (rx: Prescription) => {
+    window.open(`/api/prescriptions/${rx.id}/manifest`, '_blank', 'noopener,noreferrer');
   };
 
   return (
