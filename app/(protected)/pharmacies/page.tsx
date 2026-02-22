@@ -174,7 +174,7 @@ export default function PharmaciesPage() {
                   <button
                     key={p.id}
                     onClick={() => setSelectedItem(selectedItem?.id === p.id ? null : p)}
-                    className={`text-left rounded-xl border p-4 bg-white hover:shadow-sm transition ${selectedItem?.id === p.id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'}`}
+                    className={`text-left rounded-xl border-2 p-4 bg-white transition-all hover:border-blue-300 hover:shadow-md ${selectedItem?.id === p.id ? 'border-blue-500 shadow-md' : 'border-slate-200'}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
