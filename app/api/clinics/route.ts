@@ -34,6 +34,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ data: clinics });
     }
 
+    if (session.user.role === 'provider') {
+      const assigned = await prisma.providerClinic.findMany({
+        where: { providerId: session.user.id, status: 'active' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          clinic: {
+            include: { _count: { select: { patients: true, prescriptions: true } } },
+          },
+        },
+      });
+      return NextResponse.json({ data: assigned.map((pc) => pc.clinic) });
+    }
+
     // Other non-admin roles can only see their own clinic
     if (session.user.role !== 'admin') {
       if (!session.user.clinicId) {

@@ -24,6 +24,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           select: { id: true },
         });
         if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else if (session.user.role === 'provider') {
+        const assigned = await prisma.providerClinic.findFirst({
+          where: { providerId: session.user.id, clinicId: id, status: 'active' },
+          select: { id: true },
+        });
+        if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       } else if (session.user.clinicId !== id) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }

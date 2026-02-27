@@ -32,13 +32,16 @@ export default function ClinicsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [selected, setSelected] = useState<Clinic | null>(null);
 
-  const isSales = ['sales_rep', 'sales_manager'].includes(session?.user?.role || '');
+  const role = session?.user?.role || '';
+  const isSales = ['sales_rep', 'sales_manager'].includes(role);
+  const isProvider = role === 'provider';
+  const isReadOnly = isSales || isProvider;
 
   useEffect(() => {
     if (status !== 'authenticated') return;
 
     const role = session?.user?.role;
-    const canViewClinics = role === 'admin' || role === 'sales_rep' || role === 'sales_manager';
+    const canViewClinics = role === 'admin' || role === 'provider' || role === 'sales_rep' || role === 'sales_manager';
     if (!canViewClinics) {
       router.push('/prescriptions');
     }
@@ -84,7 +87,7 @@ export default function ClinicsPage() {
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">{clinics.length} registered clinics</p>
           </div>
-          {!isSales && (
+          {!isReadOnly && (
             <button onClick={() => { setEditItem(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
               <Plus className="h-4 w-4" />Add Clinic
             </button>
@@ -122,7 +125,7 @@ export default function ClinicsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-slate-900 text-lg">{selected.name}</h2>
               <div className="flex gap-2">
-                {!isSales && (
+                {!isReadOnly && (
                   <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
                 )}
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
