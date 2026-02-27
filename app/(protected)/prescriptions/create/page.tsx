@@ -77,6 +77,11 @@ export default function CreatePrescriptionPage() {
   useEffect(() => {
     if (!session?.user) return;
 
+    if (['sales_rep', 'sales_manager'].includes(session.user.role)) {
+      router.push('/sales');
+      return;
+    }
+
     if (session.user.role === 'clinic') {
       router.push('/prescriptions');
       return;
