@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
       const clinics = await prisma.clinic.findMany({
         where: { salesRepId: session.user.id },
         orderBy: { name: 'asc' },
-        include: { _count: { select: { patients: true, prescriptions: true } } },
+        include: {
+          _count: { select: { patients: true, prescriptions: true } },
+          salesRep: { select: { id: true, name: true, email: true } },
+        },
       });
       return NextResponse.json({ data: clinics });
     }
@@ -29,7 +32,10 @@ export async function GET(req: NextRequest) {
           ],
         },
         orderBy: { name: 'asc' },
-        include: { _count: { select: { patients: true, prescriptions: true } } },
+        include: {
+          _count: { select: { patients: true, prescriptions: true } },
+          salesRep: { select: { id: true, name: true, email: true } },
+        },
       });
       return NextResponse.json({ data: clinics });
     }
@@ -40,7 +46,10 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
         include: {
           clinic: {
-            include: { _count: { select: { patients: true, prescriptions: true } } },
+            include: {
+              _count: { select: { patients: true, prescriptions: true } },
+              salesRep: { select: { id: true, name: true, email: true } },
+            },
           },
         },
       });
@@ -62,6 +71,7 @@ export async function GET(req: NextRequest) {
       orderBy: { name: 'asc' },
       include: {
         pharmacies: { include: { pharmacy: true } },
+        salesRep: { select: { id: true, name: true, email: true } },
         _count: { select: { patients: true, prescriptions: true } },
       },
     });

@@ -13,6 +13,8 @@ interface Clinic {
   email?: string;
   status: string;
   createdAt: string;
+  salesRepId?: string | null;
+  salesRep?: { id: string; name: string; email?: string } | null;
   _count?: { patients: number; prescriptions: number };
 }
 
@@ -31,6 +33,9 @@ export default function ClinicsPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [selected, setSelected] = useState<Clinic | null>(null);
+  const [salesReps, setSalesReps] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [salesRepIdDraft, setSalesRepIdDraft] = useState('');
+  const [assigningSalesRep, setAssigningSalesRep] = useState(false);
 
   const role = session?.user?.role || '';
   const isSales = ['sales_rep', 'sales_manager'].includes(role);
@@ -58,6 +63,18 @@ export default function ClinicsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    if (role !== 'admin') return;
+    fetch('/api/users?role=sales_rep')
+      .then((res) => res.json())
+      .then((data) => setSalesReps(data.users || []))
+      .catch(() => setSalesReps([]));
+  }, [role]);
+
+  useEffect(() => {
+    setSalesRepIdDraft(selected?.salesRepId || '');
+  }, [selected?.id, selected?.salesRepId]);
+
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name is required'); return; }
     setSubmitting(true);
@@ -73,6 +90,35 @@ export default function ClinicsPage() {
       setShowForm(false);
       fetchData();
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
+  };
+
+  const handleSaveSalesRepAssignment = async () => {
+    if (!selected || role !== 'admin') return;
+    setAssigningSalesRep(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/clinics/${selected.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: selected.name,
+          address: selected.address,
+          phone: selected.phone,
+          email: selected.email,
+          status: selected.status,
+          salesRepId: salesRepIdDraft || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update clinic assignment');
+      setSuccessMsg('Sales rep assignment updated');
+      await fetchData();
+      setSelected((prev) => (prev ? { ...prev, salesRepId: salesRepIdDraft || null } : prev));
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to update clinic assignment');
+    } finally {
+      setAssigningSalesRep(false);
+    }
   };
 
   const filtered = clinics.filter((c) => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
@@ -137,6 +183,31 @@ export default function ClinicsPage() {
               {selected.address && <p className="text-sm text-slate-600 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{selected.address}</p>}
               {selected._count && <p className="text-sm text-slate-600">{selected._count.patients} patients • {selected._count.prescriptions} prescriptions</p>}
             </div>
+
+            {role === 'admin' && (
+              <div className="mt-4 rounded-xl border border-slate-200 p-4">
+                <p className="text-sm font-semibold text-slate-900 mb-2">Sales Rep Assignment</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={salesRepIdDraft}
+                    onChange={(e) => setSalesRepIdDraft(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Unassigned (House Clinic)</option>
+                    {salesReps.map((rep) => (
+                      <option key={rep.id} value={rep.id}>{rep.name} ({rep.email})</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSaveSalesRepAssignment}
+                    disabled={assigningSalesRep}
+                    className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {assigningSalesRep ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

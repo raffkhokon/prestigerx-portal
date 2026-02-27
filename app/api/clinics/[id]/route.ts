@@ -36,7 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     const clinic = await prisma.clinic.findUnique({
       where: { id },
-      include: { pharmacies: { include: { pharmacy: true } } },
+      include: {
+        pharmacies: { include: { pharmacy: true } },
+        salesRep: { select: { id: true, name: true, email: true } },
+      },
     });
     if (!clinic) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(clinic);
@@ -54,6 +57,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     const { id } = await params;
     const body = await req.json();
+
+    if (Object.prototype.hasOwnProperty.call(body, 'salesRepId') && body.salesRepId) {
+      const rep = await prisma.user.findUnique({ where: { id: body.salesRepId }, select: { id: true, role: true } });
+      if (!rep || rep.role !== 'sales_rep') {
+        return NextResponse.json({ error: 'salesRepId must reference a sales_rep user' }, { status: 400 });
+      }
+    }
+
     const updated = await prisma.clinic.update({
       where: { id },
       data: {
@@ -62,6 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         phone: body.phone,
         email: body.email,
         status: body.status,
+        salesRepId: Object.prototype.hasOwnProperty.call(body, 'salesRepId') ? (body.salesRepId || null) : undefined,
       },
     });
     await logAudit({

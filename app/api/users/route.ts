@@ -40,6 +40,10 @@ export async function GET(req: NextRequest) {
         role: true,
         clinicId: true,
         clinicName: true,
+        managerId: true,
+        manager: {
+          select: { id: true, name: true, email: true },
+        },
         status: true,
         createdAt: true,
         lastLoginAt: true,
@@ -81,6 +85,7 @@ export async function POST(req: NextRequest) {
         role: body.role || 'clinic',
         clinicId: body.clinicId,
         clinicName: body.clinicName,
+        managerId: body.managerId || null,
         status: body.status || 'active',
       },
       select: {
