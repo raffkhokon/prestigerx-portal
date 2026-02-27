@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FileText, Users, Package, TrendingUp, Plus, Activity } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,12 +27,20 @@ interface DashboardStats {
 
 export default function ProviderDashboard() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!session?.user) return;
+
+    if (['sales_rep', 'sales_manager'].includes(session.user.role)) {
+      router.push('/sales');
+      return;
+    }
+
     fetchDashboardStats();
-  }, []);
+  }, [router, session]);
 
   const fetchDashboardStats = async () => {
     try {

@@ -13,6 +13,8 @@ interface Clinic {
   email?: string;
   status: string;
   createdAt: string;
+  salesRepId?: string | null;
+  salesRep?: { id: string; name: string; email?: string } | null;
   _count?: { patients: number; prescriptions: number };
 }
 
@@ -31,9 +33,21 @@ export default function ClinicsPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [selected, setSelected] = useState<Clinic | null>(null);
+  const [salesReps, setSalesReps] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [salesRepIdDraft, setSalesRepIdDraft] = useState('');
+  const [assigningSalesRep, setAssigningSalesRep] = useState(false);
+
+  const role = session?.user?.role || '';
+  const isSales = ['sales_rep', 'sales_manager'].includes(role);
+  const isProvider = role === 'provider';
+  const isReadOnly = isSales || isProvider;
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    if (status !== 'authenticated') return;
+
+    const role = session?.user?.role;
+    const canViewClinics = role === 'admin' || role === 'provider' || role === 'sales_rep' || role === 'sales_manager';
+    if (!canViewClinics) {
       router.push('/prescriptions');
     }
   }, [status, session, router]);
@@ -48,6 +62,18 @@ export default function ClinicsPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (role !== 'admin') return;
+    fetch('/api/users?role=sales_rep')
+      .then((res) => res.json())
+      .then((data) => setSalesReps(data.users || []))
+      .catch(() => setSalesReps([]));
+  }, [role]);
+
+  useEffect(() => {
+    setSalesRepIdDraft(selected?.salesRepId || '');
+  }, [selected?.id, selected?.salesRepId]);
 
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name is required'); return; }
@@ -66,6 +92,35 @@ export default function ClinicsPage() {
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
   };
 
+  const handleSaveSalesRepAssignment = async () => {
+    if (!selected || role !== 'admin') return;
+    setAssigningSalesRep(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/clinics/${selected.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: selected.name,
+          address: selected.address,
+          phone: selected.phone,
+          email: selected.email,
+          status: selected.status,
+          salesRepId: salesRepIdDraft || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update clinic assignment');
+      setSuccessMsg('Sales rep assignment updated');
+      await fetchData();
+      setSelected((prev) => (prev ? { ...prev, salesRepId: salesRepIdDraft || null } : prev));
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to update clinic assignment');
+    } finally {
+      setAssigningSalesRep(false);
+    }
+  };
+
   const filtered = clinics.filter((c) => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -78,9 +133,11 @@ export default function ClinicsPage() {
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">{clinics.length} registered clinics</p>
           </div>
-          <button onClick={() => { setEditItem(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
-            <Plus className="h-4 w-4" />Add Clinic
-          </button>
+          {!isReadOnly && (
+            <button onClick={() => { setEditItem(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
+              <Plus className="h-4 w-4" />Add Clinic
+            </button>
+          )}
         </div>
         {successMsg && <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-2 text-green-800 text-sm"><CheckCircle2 className="h-4 w-4 text-green-600" />{successMsg}<button onClick={() => setSuccessMsg('')} className="ml-auto"><X className="h-3.5 w-3.5" /></button></div>}
         {errorMsg && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2 text-red-800 text-sm"><AlertCircle className="h-4 w-4 text-red-600" />{errorMsg}<button onClick={() => setErrorMsg('')} className="ml-auto"><X className="h-3.5 w-3.5" /></button></div>}
@@ -114,7 +171,9 @@ export default function ClinicsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-slate-900 text-lg">{selected.name}</h2>
               <div className="flex gap-2">
-                <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                {!isReadOnly && (
+                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                )}
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
             </div>
@@ -124,6 +183,31 @@ export default function ClinicsPage() {
               {selected.address && <p className="text-sm text-slate-600 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{selected.address}</p>}
               {selected._count && <p className="text-sm text-slate-600">{selected._count.patients} patients • {selected._count.prescriptions} prescriptions</p>}
             </div>
+
+            {role === 'admin' && (
+              <div className="mt-4 rounded-xl border border-slate-200 p-4">
+                <p className="text-sm font-semibold text-slate-900 mb-2">Sales Rep Assignment</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={salesRepIdDraft}
+                    onChange={(e) => setSalesRepIdDraft(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="">Unassigned (House Clinic)</option>
+                    {salesReps.map((rep) => (
+                      <option key={rep.id} value={rep.id}>{rep.name} ({rep.email})</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSaveSalesRepAssignment}
+                    disabled={assigningSalesRep}
+                    className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {assigningSalesRep ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

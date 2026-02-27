@@ -9,6 +9,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (['sales_rep', 'sales_manager'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const { id } = await params;
     const pharmacy = await prisma.pharmacy.findUnique({
       where: { id },

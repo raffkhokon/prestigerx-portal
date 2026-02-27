@@ -8,12 +8,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
-    if (session.user.role !== 'admin' && session.user.clinicId !== id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (session.user.role !== 'admin') {
+      if (session.user.role === 'sales_rep') {
+        const assigned = await prisma.clinic.findFirst({ where: { id, salesRepId: session.user.id }, select: { id: true } });
+        if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else if (session.user.role === 'sales_manager') {
+        const assigned = await prisma.clinic.findFirst({
+          where: {
+            id,
+            OR: [
+              { salesRepId: session.user.id },
+              { salesRep: { managerId: session.user.id } },
+            ],
+          },
+          select: { id: true },
+        });
+        if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else if (session.user.role === 'provider') {
+        const assigned = await prisma.providerClinic.findFirst({
+          where: { providerId: session.user.id, clinicId: id, status: 'active' },
+          select: { id: true },
+        });
+        if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else if (session.user.clinicId !== id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
     const clinic = await prisma.clinic.findUnique({
       where: { id },
-      include: { pharmacies: { include: { pharmacy: true } } },
+      include: {
+        pharmacies: { include: { pharmacy: true } },
+        salesRep: { select: { id: true, name: true, email: true } },
+      },
     });
     if (!clinic) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(clinic);
@@ -31,6 +57,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     const { id } = await params;
     const body = await req.json();
+
+    if (Object.prototype.hasOwnProperty.call(body, 'salesRepId') && body.salesRepId) {
+      const rep = await prisma.user.findUnique({ where: { id: body.salesRepId }, select: { id: true, role: true } });
+      if (!rep || rep.role !== 'sales_rep') {
+        return NextResponse.json({ error: 'salesRepId must reference a sales_rep user' }, { status: 400 });
+      }
+    }
+
     const updated = await prisma.clinic.update({
       where: { id },
       data: {
@@ -39,6 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         phone: body.phone,
         email: body.email,
         status: body.status,
+        salesRepId: Object.prototype.hasOwnProperty.call(body, 'salesRepId') ? (body.salesRepId || null) : undefined,
       },
     });
     await logAudit({

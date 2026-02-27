@@ -12,6 +12,8 @@ interface User {
   role: string;
   clinicId?: string;
   clinicName?: string;
+  managerId?: string | null;
+  manager?: { id: string; name: string; email?: string } | null;
   status: string;
   createdAt: string;
   lastLoginAt?: string;
@@ -23,10 +25,12 @@ const emptyForm = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  admin:    'bg-purple-100 text-purple-700',
-  clinic:   'bg-blue-100 text-blue-700',
-  provider: 'bg-green-100 text-green-700',
-  pharmacy: 'bg-orange-100 text-orange-700',
+  admin:         'bg-purple-100 text-purple-700',
+  clinic:        'bg-blue-100 text-blue-700',
+  provider:      'bg-green-100 text-green-700',
+  pharmacy:      'bg-orange-100 text-orange-700',
+  sales_rep:     'bg-amber-100 text-amber-700',
+  sales_manager: 'bg-teal-100 text-teal-700',
 };
 
 export default function UsersPage() {
@@ -40,6 +44,10 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [selectedRep, setSelectedRep] = useState<User | null>(null);
+  const [showManagerModal, setShowManagerModal] = useState(false);
+  const [managerIdDraft, setManagerIdDraft] = useState('');
+  const [savingManager, setSavingManager] = useState(false);
 
   // Admin-only page
   useEffect(() => {
@@ -53,7 +61,7 @@ export default function UsersPage() {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
-      setUsers(data.data || []);
+      setUsers(data.users || []);
     } catch {
       setErrorMsg('Failed to load users');
     } finally {
@@ -89,11 +97,42 @@ export default function UsersPage() {
     }
   };
 
+  const handleOpenManagerModal = (rep: User) => {
+    setSelectedRep(rep);
+    setManagerIdDraft(rep.managerId || '');
+    setShowManagerModal(true);
+  };
+
+  const handleSaveManagerAssignment = async () => {
+    if (!selectedRep) return;
+    setSavingManager(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch(`/api/users/${selectedRep.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ managerId: managerIdDraft || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update manager assignment');
+      setSuccessMsg('Sales rep manager assignment updated');
+      setShowManagerModal(false);
+      setSelectedRep(null);
+      await fetchData();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to update manager assignment');
+    } finally {
+      setSavingManager(false);
+    }
+  };
+
   const filtered = users.filter(u =>
     !search ||
     u.name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const managers = users.filter((u) => u.role === 'sales_manager');
 
   return (
     <div className="h-full flex flex-col">
@@ -156,7 +195,7 @@ export default function UsersPage() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                {['Name', 'Email', 'Role', 'Clinic', 'Status', 'Last Login', 'Created'].map(h => (
+                {['Name', 'Email', 'Role', 'Clinic', 'Manager', 'Status', 'Last Login', 'Created', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -177,6 +216,7 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">{u.clinicName || '—'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{u.manager?.name || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                       {u.status}
@@ -187,6 +227,18 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-500">
                     {new Date(u.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.role === 'sales_rep' ? (
+                      <button
+                        onClick={() => handleOpenManagerModal(u)}
+                        className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      >
+                        Assign Manager
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -227,8 +279,8 @@ export default function UsersPage() {
                   onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {['admin', 'clinic', 'provider', 'pharmacy'].map(r => (
-                    <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                  {['admin', 'clinic', 'provider', 'sales_manager', 'sales_rep'].map(r => (
+                    <option key={r} value={r}>{r.replace('_', ' ')}</option>
                   ))}
                 </select>
               </div>
@@ -244,6 +296,41 @@ export default function UsersPage() {
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Create User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showManagerModal && selectedRep && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h2 className="font-bold text-slate-900">Assign Sales Manager</h2>
+              <button onClick={() => setShowManagerModal(false)}><X className="h-5 w-5 text-slate-400" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-sm text-slate-600">Sales Rep: <span className="font-medium text-slate-900">{selectedRep.name}</span></p>
+              <select
+                value={managerIdDraft}
+                onChange={(e) => setManagerIdDraft(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Unassigned</option>
+                {managers.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name} ({m.email})</option>
+                ))}
+              </select>
+            </div>
+            <div className="p-5 border-t flex gap-3 justify-end">
+              <button onClick={() => setShowManagerModal(false)} className="px-4 py-2 text-slate-500 text-sm hover:text-slate-700">Cancel</button>
+              <button
+                onClick={handleSaveManagerAssignment}
+                disabled={savingManager}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition"
+              >
+                {savingManager && <Loader2 className="h-4 w-4 animate-spin" />}
+                Save
               </button>
             </div>
           </div>

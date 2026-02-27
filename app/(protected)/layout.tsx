@@ -12,6 +12,7 @@ import {
   User,
   Package,
   CreditCard,
+  DollarSign,
   LogOut,
   Pill,
   ShieldCheck,
@@ -26,9 +27,11 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   adminOnly?: boolean;
+  salesOnly?: boolean;
+  providerOnly?: boolean;
 }
 
-const navSections = [
+const navSections: Array<{ title: string; adminOnly?: boolean; items: NavItem[] }> = [
   {
     title: 'RX',
     items: [
@@ -41,6 +44,9 @@ const navSections = [
     title: 'DATA',
     items: [
       { href: '/billing', label: 'Billing', icon: <CreditCard className="h-4 w-4" /> },
+      { href: '/sales', label: 'Sales', icon: <DollarSign className="h-4 w-4" />, salesOnly: true },
+      { href: '/clinics', label: 'My Clinics', icon: <Building2 className="h-4 w-4" />, salesOnly: true },
+      { href: '/clinics', label: 'Assigned Clinics', icon: <Building2 className="h-4 w-4" />, providerOnly: true },
       { href: '/providers', label: 'Providers', icon: <Hospital className="h-4 w-4" />, adminOnly: true },
     ],
   },
@@ -62,6 +68,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAdmin = session?.user?.role === 'admin';
+  const isSales = isAdmin || ['sales_manager', 'sales_rep'].includes(session?.user?.role || '');
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -143,7 +150,17 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 py-4 px-3 space-y-6">
           {navSections.map((section) => {
             if (section.adminOnly && !isAdmin) return null;
-            const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin);
+            const visibleItems = section.items.filter((item) => {
+              const role = session?.user?.role || '';
+              const isSalesRole = ['sales_manager', 'sales_rep'].includes(role);
+              const isProvider = role === 'provider';
+              if (item.adminOnly && !isAdmin) return false;
+              if (item.salesOnly && !isSales) return false;
+              if (item.providerOnly && !isProvider) return false;
+              if (item.href === '/billing' && !['admin', 'clinic'].includes(role)) return false;
+              if (isSalesRole && ['/patients', '/prescriptions', '/pharmacies'].includes(item.href)) return false;
+              return true;
+            });
             if (visibleItems.length === 0) return null;
 
             return (
@@ -156,7 +173,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
                       <Link
-                        key={item.href}
+                        key={`${item.href}-${item.label}`}
                         href={item.href}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
                           isActive

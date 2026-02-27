@@ -50,9 +50,25 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          console.log('[AUTH] Looking up user:', credentials.email);
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email as string },
+          const emailInput = (credentials.email as string).trim();
+          console.log('[AUTH] Looking up user:', emailInput);
+          const user = await prisma.user.findFirst({
+            where: { email: { equals: emailInput, mode: 'insensitive' } },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              passwordHash: true,
+              role: true,
+              status: true,
+              clinicId: true,
+              clinicName: true,
+              npi: true,
+              dea: true,
+              license: true,
+              phone: true,
+              practice: true,
+            },
           });
 
           if (!user || user.status !== 'active') {

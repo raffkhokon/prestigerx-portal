@@ -29,6 +29,12 @@ model User {
   // Clinic user fields (for role=clinic)
   clinicId     String?
   clinicName   String?
+
+  // Sales hierarchy (for roles=sales_manager|sales_rep)
+  managerId    String?
+  manager      User?      @relation("SalesManagerToReps", fields: [managerId], references: [id])
+  reps         User[]     @relation("SalesManagerToReps")
+  managedClinics Clinic[] @relation("SalesRepClinics")
   
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -62,6 +68,7 @@ model Clinic {
   phone         String?
   email         String?
   status        String           @default("active")
+  salesRepId    String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   
@@ -70,6 +77,9 @@ model Clinic {
   pharmacies    ClinicPharmacy[]
   patients      Patient[]
   prescriptions Prescription[]
+  salesRep      User?            @relation("SalesRepClinics", fields: [salesRepId], references: [id])
+
+  @@index([salesRepId])
 }
 
 model Pharmacy {
@@ -282,4 +292,26 @@ model PrescriptionStatusHistory {
   notes          String?      // Optional notes about the change
   createdAt      DateTime     @default(now())
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+model CommissionLedger {
+  id                String   @id @default(cuid())
+  prescriptionId    String
+  clinicId          String
+  salesRepId        String?
+  salesManagerId    String?
+  clinicRevenue     Float    @default(0)
+  pharmacyCost      Float    @default(0)
+  repMarginPct      Float    @default(0)
+  managerOverridePct Float   @default(0)
+  repCommission     Float    @default(0)
+  managerOverride   Float    @default(0)
+  netProfit         Float    @default(0)
+  status            String   @default("pending") // pending, approved, paid
+  createdAt         DateTime @default(now())
+
+  @@index([clinicId])
+  @@index([salesRepId])
+  @@index([salesManagerId])
+  @@index([status])
 }

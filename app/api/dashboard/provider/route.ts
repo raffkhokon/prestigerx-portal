@@ -10,6 +10,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!['admin', 'provider'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Providers see their own stats, admins see everything
     const where: Record<string, unknown> = {};
     if (session.user.role === 'provider') {
