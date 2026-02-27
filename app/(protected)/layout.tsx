@@ -150,6 +150,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             const visibleItems = section.items.filter((item) => {
               if (item.adminOnly && !isAdmin) return false;
               if (item.salesOnly && !isSales) return false;
+              if (['sales_manager', 'sales_rep'].includes(session?.user?.role || '') && ['/patients', '/prescriptions'].includes(item.href)) return false;
               return true;
             });
             if (visibleItems.length === 0) return null;

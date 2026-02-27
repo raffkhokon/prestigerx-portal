@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   FileText,
@@ -60,6 +61,7 @@ interface Prescription {
 
 export default function PrescriptionsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -102,11 +104,16 @@ export default function PrescriptionsPage() {
   }, [search, medicationFilter, statusFilter, orderStatusFilter, shippingFilter, providerFilter, sortColumn, sortDirection]);
 
   useEffect(() => {
+    if (['sales_rep', 'sales_manager'].includes(session?.user?.role || '')) {
+      router.replace('/sales');
+      return;
+    }
+
     const debounce = setTimeout(() => {
       fetchPrescriptions(1);
     }, 300);
     return () => clearTimeout(debounce);
-  }, [fetchPrescriptions]);
+  }, [fetchPrescriptions, router, session?.user?.role]);
 
   // Fetch providers list for clinic users
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Users, Plus, Search, Loader2, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -43,6 +43,7 @@ const emptyForm = {
 export default function PatientsPage() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -76,8 +77,13 @@ export default function PatientsPage() {
   }, []);
 
   useEffect(() => {
+    if (['sales_rep', 'sales_manager'].includes(session?.user?.role || '')) {
+      router.replace('/sales');
+      return;
+    }
+
     fetchPatients();
-  }, [fetchPatients]);
+  }, [fetchPatients, router, session?.user?.role]);
 
   useEffect(() => {
     if (session?.user?.role !== 'admin') return;
