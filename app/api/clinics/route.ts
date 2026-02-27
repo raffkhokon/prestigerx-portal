@@ -10,7 +10,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Non-admins can only see their own clinic
+    // Sales reps/managers can only see their assigned clinics
+    if (session.user.role === 'sales_rep') {
+      const clinics = await prisma.clinic.findMany({
+        where: { salesRepId: session.user.id },
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { patients: true, prescriptions: true } } },
+      });
+      return NextResponse.json({ data: clinics });
+    }
+
+    if (session.user.role === 'sales_manager') {
+      const clinics = await prisma.clinic.findMany({
+        where: {
+          OR: [
+            { salesRepId: session.user.id },
+            { salesRep: { managerId: session.user.id } },
+          ],
+        },
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { patients: true, prescriptions: true } } },
+      });
+      return NextResponse.json({ data: clinics });
+    }
+
+    // Other non-admin roles can only see their own clinic
     if (session.user.role !== 'admin') {
       if (!session.user.clinicId) {
         return NextResponse.json({ data: [] });

@@ -8,8 +8,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
-    if (session.user.role !== 'admin' && session.user.clinicId !== id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (session.user.role !== 'admin') {
+      if (session.user.role === 'sales_rep') {
+        const assigned = await prisma.clinic.findFirst({ where: { id, salesRepId: session.user.id }, select: { id: true } });
+        if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else if (session.user.role === 'sales_manager') {
+        const assigned = await prisma.clinic.findFirst({
+          where: {
+            id,
+            OR: [
+              { salesRepId: session.user.id },
+              { salesRep: { managerId: session.user.id } },
+            ],
+          },
+          select: { id: true },
+        });
+        if (!assigned) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else if (session.user.clinicId !== id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
     const clinic = await prisma.clinic.findUnique({
       where: { id },

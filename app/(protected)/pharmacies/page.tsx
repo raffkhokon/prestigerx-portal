@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronRight, Pill } from 'lucide-react';
 
 interface Pharmacy {
@@ -40,6 +41,7 @@ const emptyForm = {
 
 export default function PharmaciesPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const isAdmin = session?.user?.role === 'admin';
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,14 @@ export default function PharmaciesPage() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (['sales_rep', 'sales_manager'].includes(session?.user?.role || '')) {
+      router.replace('/clinics');
+      return;
+    }
+
+    fetchData();
+  }, [fetchData, router, session?.user?.role]);
 
   useEffect(() => {
     if (!selectedItem?.id) {

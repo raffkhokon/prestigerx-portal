@@ -32,8 +32,14 @@ export default function ClinicsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [selected, setSelected] = useState<Clinic | null>(null);
 
+  const isSales = ['sales_rep', 'sales_manager'].includes(session?.user?.role || '');
+
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    if (status !== 'authenticated') return;
+
+    const role = session?.user?.role;
+    const canViewClinics = role === 'admin' || role === 'sales_rep' || role === 'sales_manager';
+    if (!canViewClinics) {
       router.push('/prescriptions');
     }
   }, [status, session, router]);
@@ -78,9 +84,11 @@ export default function ClinicsPage() {
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">{clinics.length} registered clinics</p>
           </div>
-          <button onClick={() => { setEditItem(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
-            <Plus className="h-4 w-4" />Add Clinic
-          </button>
+          {!isSales && (
+            <button onClick={() => { setEditItem(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
+              <Plus className="h-4 w-4" />Add Clinic
+            </button>
+          )}
         </div>
         {successMsg && <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-2 text-green-800 text-sm"><CheckCircle2 className="h-4 w-4 text-green-600" />{successMsg}<button onClick={() => setSuccessMsg('')} className="ml-auto"><X className="h-3.5 w-3.5" /></button></div>}
         {errorMsg && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2 text-red-800 text-sm"><AlertCircle className="h-4 w-4 text-red-600" />{errorMsg}<button onClick={() => setErrorMsg('')} className="ml-auto"><X className="h-3.5 w-3.5" /></button></div>}
@@ -114,7 +122,9 @@ export default function ClinicsPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-slate-900 text-lg">{selected.name}</h2>
               <div className="flex gap-2">
-                <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                {!isSales && (
+                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                )}
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
             </div>
