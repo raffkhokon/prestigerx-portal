@@ -154,6 +154,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               if (item.adminOnly && !isAdmin) return false;
               if (item.salesOnly && !isSales) return false;
               if (item.href === '/clinics' && !isSalesRole) return false;
+              if (item.href === '/billing' && !['admin', 'clinic'].includes(role)) return false;
               if (isSalesRole && ['/patients', '/prescriptions', '/pharmacies'].includes(item.href)) return false;
               return true;
             });
