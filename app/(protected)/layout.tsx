@@ -44,6 +44,7 @@ const navSections: Array<{ title: string; adminOnly?: boolean; items: NavItem[] 
     items: [
       { href: '/billing', label: 'Billing', icon: <CreditCard className="h-4 w-4" /> },
       { href: '/sales', label: 'Sales', icon: <DollarSign className="h-4 w-4" />, salesOnly: true },
+      { href: '/clinics', label: 'My Clinics', icon: <Building2 className="h-4 w-4" />, salesOnly: true },
       { href: '/providers', label: 'Providers', icon: <Hospital className="h-4 w-4" />, adminOnly: true },
     ],
   },
@@ -148,9 +149,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           {navSections.map((section) => {
             if (section.adminOnly && !isAdmin) return null;
             const visibleItems = section.items.filter((item) => {
+              const role = session?.user?.role || '';
+              const isSalesRole = ['sales_manager', 'sales_rep'].includes(role);
               if (item.adminOnly && !isAdmin) return false;
               if (item.salesOnly && !isSales) return false;
-              if (['sales_manager', 'sales_rep'].includes(session?.user?.role || '') && ['/patients', '/prescriptions', '/pharmacies'].includes(item.href)) return false;
+              if (item.href === '/clinics' && !isSalesRole) return false;
+              if (isSalesRole && ['/patients', '/prescriptions', '/pharmacies'].includes(item.href)) return false;
               return true;
             });
             if (visibleItems.length === 0) return null;
