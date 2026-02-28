@@ -10,14 +10,26 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!['admin', 'provider'].includes(session.user.role)) {
+    if (!['admin', 'provider', 'clinic'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Providers see their own stats, admins see everything
+    // Providers see their own stats, clinics see their clinic scope, admins see everything
     const where: Record<string, unknown> = {};
     if (session.user.role === 'provider') {
       where.providerId = session.user.id;
+    } else if (session.user.role === 'clinic') {
+      if (!session.user.clinicId) {
+        return NextResponse.json({
+          totalPrescriptions: 0,
+          totalPatients: 0,
+          pendingPrescriptions: 0,
+          shippedPrescriptions: 0,
+          prescriptionsByClinic: [],
+          recentActivity: [],
+        });
+      }
+      where.clinicId = session.user.clinicId;
     }
 
     // Get total prescriptions
