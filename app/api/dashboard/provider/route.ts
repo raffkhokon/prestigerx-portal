@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { decryptPHI } from '@/lib/encryption';
 
 export async function GET() {
   try {
@@ -100,15 +101,26 @@ export async function GET() {
       },
     });
 
+    const recentActivityDecrypted = recentActivity.map((item) =>
+      decryptPHI(item as unknown as Record<string, unknown>, 'prescription') as {
+        id: string;
+        patientName?: string;
+        medicationName?: string;
+        clinicName?: string;
+        orderStatus: string;
+        createdAt: Date;
+      }
+    );
+
     return NextResponse.json({
       totalPrescriptions,
       totalPatients: uniquePatients.length,
       pendingPrescriptions,
       shippedPrescriptions,
       prescriptionsByClinic,
-      recentActivity: recentActivity.map((item) => ({
+      recentActivity: recentActivityDecrypted.map((item) => ({
         id: item.id,
-        patientName: item.patientName,
+        patientName: item.patientName || 'N/A',
         medicationName: item.medicationName || 'N/A',
         clinicName: item.clinicName || 'N/A',
         status: item.orderStatus,
