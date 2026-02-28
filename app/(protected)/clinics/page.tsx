@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronDown, Check } from 'lucide-react';
@@ -37,6 +37,7 @@ export default function ClinicsPage() {
   const [salesReps, setSalesReps] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
   const [pharmacyPickerOpen, setPharmacyPickerOpen] = useState(false);
+  const pharmacyPickerRef = useRef<HTMLDivElement | null>(null);
 
   const role = session?.user?.role || '';
   const isSales = ['sales_rep', 'sales_manager'].includes(role);
@@ -76,6 +77,20 @@ export default function ClinicsPage() {
       .then((data) => setPharmacies((data.data || []).map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }))))
       .catch(() => setPharmacies([]));
   }, [role]);
+
+  useEffect(() => {
+    if (!pharmacyPickerOpen) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (!pharmacyPickerRef.current) return;
+      if (!pharmacyPickerRef.current.contains(event.target as Node)) {
+        setPharmacyPickerOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [pharmacyPickerOpen]);
 
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name is required'); return; }
@@ -191,7 +206,7 @@ export default function ClinicsPage() {
                 </div>
               )}
               {role === 'admin' && (
-                <div className="relative">
+                <div className="relative" ref={pharmacyPickerRef}>
                   <label className="field-label">Assigned Pharmacies</label>
                   <button
                     type="button"
