@@ -1,16 +1,44 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Toast from '@/components/Toast';
 import { TableSkeleton, FormSkeleton, Skeleton } from '@/components/Skeleton';
 import StatusBadge from '@/components/StatusBadge';
-import { FileText } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 
 export default function UIDemo() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showErrorToast, setShowErrorToast] = useState(false);
   const [showInfoToast, setShowInfoToast] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(false);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (session?.user?.role === 'admin') return;
+
+    if (['sales_manager', 'sales_rep'].includes(session?.user?.role || '')) {
+      router.replace('/sales');
+      return;
+    }
+
+    router.replace('/prescriptions');
+  }, [status, session?.user?.role, router]);
+
+  if (status === 'loading') {
+    return (
+      <div className="h-full flex items-center justify-center bg-white">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    return null;
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
