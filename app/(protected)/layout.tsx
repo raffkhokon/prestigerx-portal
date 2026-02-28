@@ -13,6 +13,7 @@ import {
   Package,
   CreditCard,
   DollarSign,
+  LayoutDashboard,
   LogOut,
   Pill,
   ShieldCheck,
@@ -43,6 +44,7 @@ const navSections: Array<{ title: string; adminOnly?: boolean; items: NavItem[] 
   {
     title: 'DATA',
     items: [
+      { href: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
       { href: '/billing', label: 'Billing', icon: <CreditCard className="h-4 w-4" /> },
       { href: '/sales', label: 'Sales', icon: <DollarSign className="h-4 w-4" />, salesOnly: true },
       { href: '/clinics', label: 'My Clinics', icon: <Building2 className="h-4 w-4" />, salesOnly: true },
@@ -157,6 +159,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               if (item.adminOnly && !isAdmin) return false;
               if (item.salesOnly && !isSales) return false;
               if (item.providerOnly && !isProvider) return false;
+              if (item.href === '/dashboard' && !['provider', 'clinic'].includes(role)) return false;
               if (item.href === '/billing' && !['admin', 'clinic'].includes(role)) return false;
               if (isSalesRole && ['/patients', '/prescriptions', '/pharmacies'].includes(item.href)) return false;
               return true;
