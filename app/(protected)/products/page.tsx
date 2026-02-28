@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Package, Plus, Search, Loader2, X, CheckCircle2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -30,6 +32,8 @@ const emptyForm = {
 };
 
 export default function ProductsPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,14 +54,27 @@ export default function ProductsPage() {
     } catch { setErrorMsg('Failed to load'); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.role !== 'admin') {
+      router.replace('/prescriptions');
+    }
+  }, [status, session?.user?.role, router]);
 
   useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (session?.user?.role !== 'admin') return;
+    fetchData();
+  }, [status, session?.user?.role, fetchData]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (session?.user?.role !== 'admin') return;
+
     fetch('/api/pharmacies')
       .then((res) => res.json())
       .then((data) => setPharmacies((data.data || []).map((p: any) => ({ id: p.id, name: p.name }))))
       .catch(() => {});
-  }, []);
+  }, [status, session?.user?.role]);
 
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name required'); return; }
@@ -81,6 +98,18 @@ export default function ProductsPage() {
       fetchData();
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="h-full flex items-center justify-center bg-white">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    return null;
+  }
 
   const filtered = products.filter((p) => {
     if (!search) return true;
