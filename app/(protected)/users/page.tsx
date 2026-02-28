@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { UserCog, Plus, Search, Loader2, X, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { useAutoDismiss } from '@/lib/useAutoDismiss';
 
 interface User {
   id: string;
@@ -44,6 +45,9 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useAutoDismiss(successMsg, setSuccessMsg);
+  useAutoDismiss(errorMsg, setErrorMsg);
   const [selectedRep, setSelectedRep] = useState<User | null>(null);
   const [showManagerModal, setShowManagerModal] = useState(false);
   const [managerIdDraft, setManagerIdDraft] = useState('');

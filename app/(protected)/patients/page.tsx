@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Users, Plus, Search, Loader2, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { useAutoDismiss } from '@/lib/useAutoDismiss';
 
 interface Patient {
   id: string;
@@ -53,6 +54,9 @@ export default function PatientsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useAutoDismiss(successMsg, setSuccessMsg);
+  useAutoDismiss(errorMsg, setErrorMsg);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
 
