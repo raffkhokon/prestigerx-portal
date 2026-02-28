@@ -52,7 +52,7 @@ export default function UsersPage() {
   // Admin-only page
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.role !== 'admin') {
-      router.push('/prescriptions');
+      router.replace('/prescriptions');
     }
   }, [status, session, router]);
 
@@ -69,7 +69,11 @@ export default function UsersPage() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (session?.user?.role !== 'admin') return;
+    fetchData();
+  }, [status, session?.user?.role, fetchData]);
 
   const handleSubmit = async () => {
     if (!form.email || !form.password || !form.name) {
@@ -125,6 +129,18 @@ export default function UsersPage() {
       setSavingManager(false);
     }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="h-full flex items-center justify-center bg-white">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    return null;
+  }
 
   const filtered = users.filter(u =>
     !search ||

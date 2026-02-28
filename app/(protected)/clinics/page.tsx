@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin } from 'lucide-react';
+import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronDown, Check } from 'lucide-react';
 
 interface Clinic {
   id: string;
@@ -15,10 +15,11 @@ interface Clinic {
   createdAt: string;
   salesRepId?: string | null;
   salesRep?: { id: string; name: string; email?: string } | null;
+  pharmacies?: Array<{ pharmacyId: string; pharmacy?: { id: string; name: string } }>;
   _count?: { patients: number; prescriptions: number };
 }
 
-const emptyForm = { name: '', address: '', phone: '', email: '', status: 'active' };
+const emptyForm = { name: '', address: '', phone: '', email: '', status: 'active', salesRepId: '', pharmacyIds: [] as string[] };
 
 export default function ClinicsPage() {
   const { data: session, status } = useSession();
@@ -34,8 +35,8 @@ export default function ClinicsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [selected, setSelected] = useState<Clinic | null>(null);
   const [salesReps, setSalesReps] = useState<Array<{ id: string; name: string; email: string }>>([]);
-  const [salesRepIdDraft, setSalesRepIdDraft] = useState('');
-  const [assigningSalesRep, setAssigningSalesRep] = useState(false);
+  const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
+  const [pharmacyPickerOpen, setPharmacyPickerOpen] = useState(false);
 
   const role = session?.user?.role || '';
   const isSales = ['sales_rep', 'sales_manager'].includes(role);
@@ -69,11 +70,12 @@ export default function ClinicsPage() {
       .then((res) => res.json())
       .then((data) => setSalesReps(data.users || []))
       .catch(() => setSalesReps([]));
-  }, [role]);
 
-  useEffect(() => {
-    setSalesRepIdDraft(selected?.salesRepId || '');
-  }, [selected?.id, selected?.salesRepId]);
+    fetch('/api/pharmacies')
+      .then((res) => res.json())
+      .then((data) => setPharmacies((data.data || []).map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }))))
+      .catch(() => setPharmacies([]));
+  }, [role]);
 
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name is required'); return; }
@@ -88,37 +90,9 @@ export default function ClinicsPage() {
       if (!res.ok) throw new Error();
       setSuccessMsg(editItem ? 'Clinic updated!' : 'Clinic created!');
       setShowForm(false);
+      setPharmacyPickerOpen(false);
       fetchData();
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
-  };
-
-  const handleSaveSalesRepAssignment = async () => {
-    if (!selected || role !== 'admin') return;
-    setAssigningSalesRep(true);
-    setErrorMsg('');
-    try {
-      const res = await fetch(`/api/clinics/${selected.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: selected.name,
-          address: selected.address,
-          phone: selected.phone,
-          email: selected.email,
-          status: selected.status,
-          salesRepId: salesRepIdDraft || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to update clinic assignment');
-      setSuccessMsg('Sales rep assignment updated');
-      await fetchData();
-      setSelected((prev) => (prev ? { ...prev, salesRepId: salesRepIdDraft || null } : prev));
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to update clinic assignment');
-    } finally {
-      setAssigningSalesRep(false);
-    }
   };
 
   const filtered = clinics.filter((c) => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
@@ -134,7 +108,7 @@ export default function ClinicsPage() {
             <p className="text-slate-500 text-sm mt-0.5">{clinics.length} registered clinics</p>
           </div>
           {!isReadOnly && (
-            <button onClick={() => { setEditItem(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
+            <button onClick={() => { setEditItem(null); setForm(emptyForm); setPharmacyPickerOpen(false); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
               <Plus className="h-4 w-4" />Add Clinic
             </button>
           )}
@@ -172,7 +146,7 @@ export default function ClinicsPage() {
               <h2 className="font-bold text-slate-900 text-lg">{selected.name}</h2>
               <div className="flex gap-2">
                 {!isReadOnly && (
-                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status, salesRepId: selected.salesRepId || '', pharmacyIds: (selected.pharmacies || []).map((cp) => cp.pharmacyId) }); setPharmacyPickerOpen(false); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
                 )}
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
@@ -182,40 +156,17 @@ export default function ClinicsPage() {
               {selected.email && <p className="text-sm text-slate-600 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{selected.email}</p>}
               {selected.address && <p className="text-sm text-slate-600 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{selected.address}</p>}
               {selected._count && <p className="text-sm text-slate-600">{selected._count.patients} patients • {selected._count.prescriptions} prescriptions</p>}
-            </div>
-
-            {role === 'admin' && (
-              <div className="mt-4 rounded-xl border border-slate-200 p-4">
-                <p className="text-sm font-semibold text-slate-900 mb-2">Sales Rep Assignment</p>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={salesRepIdDraft}
-                    onChange={(e) => setSalesRepIdDraft(e.target.value)}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="">Unassigned (House Clinic)</option>
-                    {salesReps.map((rep) => (
-                      <option key={rep.id} value={rep.id}>{rep.name} ({rep.email})</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleSaveSalesRepAssignment}
-                    disabled={assigningSalesRep}
-                    className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {assigningSalesRep ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              {role === 'admin' && selected.pharmacies && selected.pharmacies.length > 0 && (
+                <p className="text-sm text-slate-600">Pharmacies: {selected.pharmacies.map((cp) => cp.pharmacy?.name || cp.pharmacyId).join(', ')}</p>
+              )}
+            </div>          </div>
         )}
       </div>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">{editItem ? 'Edit Clinic' : 'Add Clinic'}</h2><button onClick={() => setShowForm(false)}><X className="h-5 w-5 text-slate-400" /></button></div>
+            <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">{editItem ? 'Edit Clinic' : 'Add Clinic'}</h2><button onClick={() => { setShowForm(false); setPharmacyPickerOpen(false); }}><X className="h-5 w-5 text-slate-400" /></button></div>
             <div className="p-5 space-y-4">
               <div><label className="field-label">Name *</label><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="field-input" /></div>
               <div><label className="field-label">Address</label><input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="field-input" /></div>
@@ -224,9 +175,91 @@ export default function ClinicsPage() {
                 <div><label className="field-label">Email</label><input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field-input" /></div>
               </div>
               <div><label className="field-label">Status</label><select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="field-input"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+              {role === 'admin' && (
+                <div>
+                  <label className="field-label">Sales Rep Assignment</label>
+                  <select
+                    value={form.salesRepId}
+                    onChange={(e) => setForm((f) => ({ ...f, salesRepId: e.target.value }))}
+                    className="field-input"
+                  >
+                    <option value="">Unassigned (House Clinic)</option>
+                    {salesReps.map((rep) => (
+                      <option key={rep.id} value={rep.id}>{rep.name} ({rep.email})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {role === 'admin' && (
+                <div className="relative">
+                  <label className="field-label">Assigned Pharmacies</label>
+                  <button
+                    type="button"
+                    onClick={() => setPharmacyPickerOpen((v) => !v)}
+                    className="field-input text-left flex items-center justify-between"
+                  >
+                    <span className="truncate">
+                      {form.pharmacyIds.length === 0
+                        ? 'Select pharmacies...'
+                        : `${form.pharmacyIds.length} selected`}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-slate-400 transition ${pharmacyPickerOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {form.pharmacyIds.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {form.pharmacyIds.map((id) => {
+                        const name = pharmacies.find((p) => p.id === id)?.name || id;
+                        return (
+                          <span key={id} className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            {name}
+                            <button
+                              type="button"
+                              onClick={() => setForm((f) => ({ ...f, pharmacyIds: f.pharmacyIds.filter((x) => x !== id) }))}
+                              className="hover:text-blue-900"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {pharmacyPickerOpen && (
+                    <div className="absolute z-10 mt-2 w-full max-h-52 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg p-1">
+                      {pharmacies.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-slate-500">No pharmacies available</p>
+                      ) : (
+                        pharmacies.map((p) => {
+                          const checked = form.pharmacyIds.includes(p.id);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setForm((f) => ({
+                                  ...f,
+                                  pharmacyIds: checked
+                                    ? f.pharmacyIds.filter((id) => id !== p.id)
+                                    : [...f.pharmacyIds, p.id],
+                                }));
+                              }}
+                              className="w-full px-3 py-2 text-sm rounded-md hover:bg-slate-50 flex items-center justify-between"
+                            >
+                              <span>{p.name}</span>
+                              {checked && <Check className="h-4 w-4 text-blue-600" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="p-5 border-t flex gap-3 justify-end">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
+              <button onClick={() => { setShowForm(false); setPharmacyPickerOpen(false); }} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
               <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}{editItem ? 'Update' : 'Create'}</button>
             </div>
           </div>

@@ -91,6 +91,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+
+    if (Object.prototype.hasOwnProperty.call(body, 'salesRepId') && body.salesRepId) {
+      const rep = await prisma.user.findUnique({ where: { id: body.salesRepId }, select: { id: true, role: true } });
+      if (!rep || rep.role !== 'sales_rep') {
+        return NextResponse.json({ error: 'salesRepId must reference a sales_rep user' }, { status: 400 });
+      }
+    }
+
     const clinic = await prisma.clinic.create({
       data: {
         name: body.name,
@@ -98,6 +106,7 @@ export async function POST(req: NextRequest) {
         phone: body.phone,
         email: body.email,
         status: body.status || 'active',
+        salesRepId: body.salesRepId || null,
       },
     });
 

@@ -10,14 +10,26 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!['admin', 'provider'].includes(session.user.role)) {
+    if (!['admin', 'provider', 'clinic'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Providers see their own stats, admins see everything
+    // Providers see their own stats, clinics see their clinic scope, admins see everything
     const where: Record<string, unknown> = {};
     if (session.user.role === 'provider') {
       where.providerId = session.user.id;
+    } else if (session.user.role === 'clinic') {
+      if (!session.user.clinicId) {
+        return NextResponse.json({
+          totalPrescriptions: 0,
+          totalPatients: 0,
+          pendingPrescriptions: 0,
+          shippedPrescriptions: 0,
+          prescriptionsByClinic: [],
+          recentActivity: [],
+        });
+      }
+      where.clinicId = session.user.clinicId;
     }
 
     // Get total prescriptions
@@ -45,16 +57,32 @@ export async function GET() {
       },
     });
 
-    // Get prescriptions by clinic
+    // Get prescriptions by clinic (group by stable clinicId, not snapshot clinicName)
     const prescriptionsByClinicRaw = await prisma.prescription.groupBy({
-      by: ['clinicId', 'clinicName'],
+      by: ['clinicId'],
       where,
-      _count: true,
+      _count: { _all: true },
     });
 
+    const clinicIds = prescriptionsByClinicRaw
+      .map((item) => item.clinicId)
+      .filter((id): id is string => Boolean(id));
+
+    const clinics = clinicIds.length
+      ? await prisma.clinic.findMany({
+          where: { id: { in: clinicIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+
+    const clinicNameById = new Map(clinics.map((c) => [c.id, c.name]));
+
     const prescriptionsByClinic = prescriptionsByClinicRaw.map((item) => ({
-      clinicName: item.clinicName || 'Unknown Clinic',
-      count: item._count,
+      clinicName:
+        (item.clinicId ? clinicNameById.get(item.clinicId) : undefined) ||
+        (session.user.role === 'clinic' ? session.user.clinicName : undefined) ||
+        'Unknown Clinic',
+      count: item._count._all,
     }));
 
     // Get recent activity
