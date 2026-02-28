@@ -158,6 +158,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               const isProvider = role === 'provider';
               if (item.adminOnly && !isAdmin) return false;
               if (item.salesOnly && !isSales) return false;
+              if (item.salesOnly && isAdmin) return false;
               if (item.providerOnly && !isProvider) return false;
               if (item.href === '/dashboard' && !['admin', 'provider', 'clinic'].includes(role)) return false;
               if (item.href === '/billing' && !['admin', 'clinic'].includes(role)) return false;
