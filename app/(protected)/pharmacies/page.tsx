@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Building2, Plus, Search, Loader2, X, CheckCircle2, AlertCircle, Phone, Mail, MapPin, ChevronRight, Pill } from 'lucide-react';
+import { useAutoDismiss } from '@/lib/useAutoDismiss';
 
 interface Pharmacy {
   id: string;
@@ -56,6 +57,9 @@ export default function PharmaciesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useAutoDismiss(successMsg, setSuccessMsg);
+  useAutoDismiss(errorMsg, setErrorMsg);
   const [selectedItem, setSelectedItem] = useState<Pharmacy | null>(null);
   const [panelTab, setPanelTab] = useState<'overview' | 'medications'>('overview');
   const [pharmacyProducts, setPharmacyProducts] = useState<Product[]>([]);

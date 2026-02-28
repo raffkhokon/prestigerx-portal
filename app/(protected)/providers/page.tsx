@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Hospital, Plus, Search, Loader2, X, CheckCircle2 } from 'lucide-react';
+import { useAutoDismiss } from '@/lib/useAutoDismiss';
 
 interface Provider {
   id: string;
@@ -38,6 +39,9 @@ export default function ProvidersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useAutoDismiss(successMsg, setSuccessMsg);
+  useAutoDismiss(errorMsg, setErrorMsg);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);

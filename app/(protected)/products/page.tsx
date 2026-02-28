@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Package, Plus, Search, Loader2, X, CheckCircle2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useAutoDismiss } from '@/lib/useAutoDismiss';
 
 interface Product {
   id: string;
@@ -44,6 +45,9 @@ export default function ProductsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useAutoDismiss(successMsg, setSuccessMsg);
+  useAutoDismiss(errorMsg, setErrorMsg);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
