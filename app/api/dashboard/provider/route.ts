@@ -57,16 +57,32 @@ export async function GET() {
       },
     });
 
-    // Get prescriptions by clinic
+    // Get prescriptions by clinic (group by stable clinicId, not snapshot clinicName)
     const prescriptionsByClinicRaw = await prisma.prescription.groupBy({
-      by: ['clinicId', 'clinicName'],
+      by: ['clinicId'],
       where,
-      _count: true,
+      _count: { _all: true },
     });
 
+    const clinicIds = prescriptionsByClinicRaw
+      .map((item) => item.clinicId)
+      .filter((id): id is string => Boolean(id));
+
+    const clinics = clinicIds.length
+      ? await prisma.clinic.findMany({
+          where: { id: { in: clinicIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+
+    const clinicNameById = new Map(clinics.map((c) => [c.id, c.name]));
+
     const prescriptionsByClinic = prescriptionsByClinicRaw.map((item) => ({
-      clinicName: item.clinicName || 'Unknown Clinic',
-      count: item._count,
+      clinicName:
+        (item.clinicId ? clinicNameById.get(item.clinicId) : undefined) ||
+        (session.user.role === 'clinic' ? session.user.clinicName : undefined) ||
+        'Unknown Clinic',
+      count: item._count._all,
     }));
 
     // Get recent activity
