@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Hospital, Plus, Search, Loader2, X, CheckCircle2 } from 'lucide-react';
 
 interface Provider {
@@ -27,7 +28,8 @@ const emptyForm = {
 };
 
 export default function ProvidersPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,7 +52,17 @@ export default function ProvidersPage() {
     } catch { setErrorMsg('Failed to load'); } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.role !== 'admin') {
+      router.replace('/prescriptions');
+    }
+  }, [status, session?.user?.role, router]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (session?.user?.role !== 'admin') return;
+    fetchData();
+  }, [status, session?.user?.role, fetchData]);
 
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name required'); return; }
@@ -142,6 +154,18 @@ export default function ProvidersPage() {
       setAssigningClinicId(null);
     }
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="h-full flex items-center justify-center bg-white">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && session?.user?.role !== 'admin') {
+    return null;
+  }
 
   const filtered = providers.filter((p) => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.npi?.includes(search));
 
