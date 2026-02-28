@@ -15,10 +15,11 @@ interface Clinic {
   createdAt: string;
   salesRepId?: string | null;
   salesRep?: { id: string; name: string; email?: string } | null;
+  pharmacies?: Array<{ pharmacyId: string; pharmacy?: { id: string; name: string } }>;
   _count?: { patients: number; prescriptions: number };
 }
 
-const emptyForm = { name: '', address: '', phone: '', email: '', status: 'active' };
+const emptyForm = { name: '', address: '', phone: '', email: '', status: 'active', pharmacyIds: [] as string[] };
 
 export default function ClinicsPage() {
   const { data: session, status } = useSession();
@@ -34,6 +35,7 @@ export default function ClinicsPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [selected, setSelected] = useState<Clinic | null>(null);
   const [salesReps, setSalesReps] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
   const [salesRepIdDraft, setSalesRepIdDraft] = useState('');
   const [assigningSalesRep, setAssigningSalesRep] = useState(false);
 
@@ -69,6 +71,11 @@ export default function ClinicsPage() {
       .then((res) => res.json())
       .then((data) => setSalesReps(data.users || []))
       .catch(() => setSalesReps([]));
+
+    fetch('/api/pharmacies')
+      .then((res) => res.json())
+      .then((data) => setPharmacies((data.data || []).map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }))))
+      .catch(() => setPharmacies([]));
   }, [role]);
 
   useEffect(() => {
@@ -172,7 +179,7 @@ export default function ClinicsPage() {
               <h2 className="font-bold text-slate-900 text-lg">{selected.name}</h2>
               <div className="flex gap-2">
                 {!isReadOnly && (
-                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status, pharmacyIds: (selected.pharmacies || []).map((cp) => cp.pharmacyId) }); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
                 )}
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
@@ -182,6 +189,9 @@ export default function ClinicsPage() {
               {selected.email && <p className="text-sm text-slate-600 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{selected.email}</p>}
               {selected.address && <p className="text-sm text-slate-600 flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{selected.address}</p>}
               {selected._count && <p className="text-sm text-slate-600">{selected._count.patients} patients • {selected._count.prescriptions} prescriptions</p>}
+              {role === 'admin' && selected.pharmacies && selected.pharmacies.length > 0 && (
+                <p className="text-sm text-slate-600">Pharmacies: {selected.pharmacies.map((cp) => cp.pharmacy?.name || cp.pharmacyId).join(', ')}</p>
+              )}
             </div>
 
             {role === 'admin' && (
@@ -224,6 +234,25 @@ export default function ClinicsPage() {
                 <div><label className="field-label">Email</label><input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field-input" /></div>
               </div>
               <div><label className="field-label">Status</label><select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="field-input"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+              {role === 'admin' && (
+                <div>
+                  <label className="field-label">Assigned Pharmacies</label>
+                  <select
+                    multiple
+                    value={form.pharmacyIds}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+                      setForm((f) => ({ ...f, pharmacyIds: values }));
+                    }}
+                    className="field-input min-h-[120px]"
+                  >
+                    {pharmacies.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">Hold Cmd/Ctrl to select multiple pharmacies.</p>
+                </div>
+              )}
             </div>
             <div className="p-5 border-t flex gap-3 justify-end">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>

@@ -76,6 +76,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         salesRepId: Object.prototype.hasOwnProperty.call(body, 'salesRepId') ? (body.salesRepId || null) : undefined,
       },
     });
+
+    if (Array.isArray(body.pharmacyIds)) {
+      await prisma.$transaction([
+        prisma.clinicPharmacy.deleteMany({ where: { clinicId: id } }),
+        ...(body.pharmacyIds.length
+          ? [
+              prisma.clinicPharmacy.createMany({
+                data: body.pharmacyIds.map((pharmacyId: string) => ({ clinicId: id, pharmacyId })),
+                skipDuplicates: true,
+              }),
+            ]
+          : []),
+      ]);
+    }
     await logAudit({
       userId: session.user.id,
       userEmail: session.user.email!,
