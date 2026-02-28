@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, FormEvent, Suspense } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Pill } from 'lucide-react';
 
@@ -9,7 +9,7 @@ import { Loader2, Pill } from 'lucide-react';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +25,17 @@ function LoginForm() {
       if (result?.error) {
         setError('Invalid email or password. Please try again.');
       } else {
-        router.push(callbackUrl);
+        const session = await getSession();
+        const role = (session?.user as { role?: string } | undefined)?.role;
+
+        const roleDefault = ['admin', 'provider', 'clinic'].includes(role || '')
+          ? '/dashboard'
+          : ['sales_manager', 'sales_rep'].includes(role || '')
+          ? '/sales'
+          : '/prescriptions';
+
+        const destination = !callbackUrl || callbackUrl === '/' ? roleDefault : callbackUrl;
+        router.push(destination);
         router.refresh();
       }
     } catch {
