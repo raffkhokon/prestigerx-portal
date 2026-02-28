@@ -19,7 +19,7 @@ interface Clinic {
   _count?: { patients: number; prescriptions: number };
 }
 
-const emptyForm = { name: '', address: '', phone: '', email: '', status: 'active', pharmacyIds: [] as string[] };
+const emptyForm = { name: '', address: '', phone: '', email: '', status: 'active', salesRepId: '', pharmacyIds: [] as string[] };
 
 export default function ClinicsPage() {
   const { data: session, status } = useSession();
@@ -36,8 +36,6 @@ export default function ClinicsPage() {
   const [selected, setSelected] = useState<Clinic | null>(null);
   const [salesReps, setSalesReps] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [pharmacies, setPharmacies] = useState<Array<{ id: string; name: string }>>([]);
-  const [salesRepIdDraft, setSalesRepIdDraft] = useState('');
-  const [assigningSalesRep, setAssigningSalesRep] = useState(false);
   const [pharmacyPickerOpen, setPharmacyPickerOpen] = useState(false);
 
   const role = session?.user?.role || '';
@@ -79,10 +77,6 @@ export default function ClinicsPage() {
       .catch(() => setPharmacies([]));
   }, [role]);
 
-  useEffect(() => {
-    setSalesRepIdDraft(selected?.salesRepId || '');
-  }, [selected?.id, selected?.salesRepId]);
-
   const handleSubmit = async () => {
     if (!form.name) { setErrorMsg('Name is required'); return; }
     setSubmitting(true);
@@ -99,35 +93,6 @@ export default function ClinicsPage() {
       setPharmacyPickerOpen(false);
       fetchData();
     } catch { setErrorMsg('Failed to save'); } finally { setSubmitting(false); }
-  };
-
-  const handleSaveSalesRepAssignment = async () => {
-    if (!selected || role !== 'admin') return;
-    setAssigningSalesRep(true);
-    setErrorMsg('');
-    try {
-      const res = await fetch(`/api/clinics/${selected.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: selected.name,
-          address: selected.address,
-          phone: selected.phone,
-          email: selected.email,
-          status: selected.status,
-          salesRepId: salesRepIdDraft || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to update clinic assignment');
-      setSuccessMsg('Sales rep assignment updated');
-      await fetchData();
-      setSelected((prev) => (prev ? { ...prev, salesRepId: salesRepIdDraft || null } : prev));
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to update clinic assignment');
-    } finally {
-      setAssigningSalesRep(false);
-    }
   };
 
   const filtered = clinics.filter((c) => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
@@ -181,7 +146,7 @@ export default function ClinicsPage() {
               <h2 className="font-bold text-slate-900 text-lg">{selected.name}</h2>
               <div className="flex gap-2">
                 {!isReadOnly && (
-                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status, pharmacyIds: (selected.pharmacies || []).map((cp) => cp.pharmacyId) }); setPharmacyPickerOpen(false); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
+                  <button onClick={() => { setEditItem(selected); setForm({ name: selected.name, address: selected.address || '', phone: selected.phone || '', email: selected.email || '', status: selected.status, salesRepId: selected.salesRepId || '', pharmacyIds: (selected.pharmacies || []).map((cp) => cp.pharmacyId) }); setPharmacyPickerOpen(false); setShowForm(true); }} className="text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">Edit</button>
                 )}
                 <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
               </div>
@@ -194,33 +159,7 @@ export default function ClinicsPage() {
               {role === 'admin' && selected.pharmacies && selected.pharmacies.length > 0 && (
                 <p className="text-sm text-slate-600">Pharmacies: {selected.pharmacies.map((cp) => cp.pharmacy?.name || cp.pharmacyId).join(', ')}</p>
               )}
-            </div>
-
-            {role === 'admin' && (
-              <div className="mt-4 rounded-xl border border-slate-200 p-4">
-                <p className="text-sm font-semibold text-slate-900 mb-2">Sales Rep Assignment</p>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={salesRepIdDraft}
-                    onChange={(e) => setSalesRepIdDraft(e.target.value)}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="">Unassigned (House Clinic)</option>
-                    {salesReps.map((rep) => (
-                      <option key={rep.id} value={rep.id}>{rep.name} ({rep.email})</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleSaveSalesRepAssignment}
-                    disabled={assigningSalesRep}
-                    className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {assigningSalesRep ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>          </div>
         )}
       </div>
 
@@ -236,6 +175,21 @@ export default function ClinicsPage() {
                 <div><label className="field-label">Email</label><input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field-input" /></div>
               </div>
               <div><label className="field-label">Status</label><select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className="field-input"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+              {role === 'admin' && (
+                <div>
+                  <label className="field-label">Sales Rep Assignment</label>
+                  <select
+                    value={form.salesRepId}
+                    onChange={(e) => setForm((f) => ({ ...f, salesRepId: e.target.value }))}
+                    className="field-input"
+                  >
+                    <option value="">Unassigned (House Clinic)</option>
+                    {salesReps.map((rep) => (
+                      <option key={rep.id} value={rep.id}>{rep.name} ({rep.email})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {role === 'admin' && (
                 <div className="relative">
                   <label className="field-label">Assigned Pharmacies</label>
