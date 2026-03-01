@@ -51,8 +51,8 @@ export default function BillingPage() {
   const paid = transactions.filter((t) => t.status === 'paid').length;
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+    <div className="h-full flex flex-col page-wrap pt-6">
+      <div className="panel px-6 py-5">
         <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-blue-600" />
           Billing
@@ -61,7 +61,7 @@ export default function BillingPage() {
       </div>
 
       {/* Stats */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="panel px-6 py-5 mt-4">
         <div className="grid grid-cols-4 gap-4">
           <StatCard
             icon={<DollarSign className="h-5 w-5 text-green-600" />}
@@ -91,7 +91,7 @@ export default function BillingPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto bg-white">
+      <div className="flex-1 overflow-auto panel mt-4">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />

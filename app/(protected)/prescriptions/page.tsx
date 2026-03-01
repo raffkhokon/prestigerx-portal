@@ -163,25 +163,25 @@ export default function PrescriptionsPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="h-full flex flex-col page-wrap pt-6">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="panel px-6 py-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Prescription History</h1>
-            <p className="text-slate-500 text-sm mt-1">Search your prescription records</p>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">Prescription History</h1>
+            <p className="text-slate-500 text-sm mt-1.5">Search your prescription records</p>
           </div>
           <div className="flex items-center gap-2">
             {session?.user?.role !== 'clinic' && (
               <Link
                 href="/prescriptions/create"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+                className="modern-button-primary"
               >
                 <Plus className="h-4 w-4" />
                 New Prescription
               </Link>
             )}
-            <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition">
+            <button className="modern-button-secondary">
               <Download className="h-4 w-4" />
               Export Data
             </button>
@@ -196,12 +196,12 @@ export default function PrescriptionsPage() {
             placeholder="Search by patient name, medication, provider, or prescription ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm text-black placeholder:text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="modern-input pl-9 pr-4"
           />
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 mt-4">
+        <div className="flex flex-wrap items-center gap-2.5 mt-4">
           {/* Provider filter - only for clinic users */}
           {session?.user?.role === 'clinic' && providers.length > 0 && (
             <FilterDropdown
@@ -260,7 +260,7 @@ export default function PrescriptionsPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto bg-white">
+      <div className="flex-1 overflow-auto panel mt-4">
         {loading ? (
           <div className="p-6">
             <TableSkeleton rows={10} />
@@ -273,7 +273,7 @@ export default function PrescriptionsPage() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-white border-b border-slate-200 sticky top-0">
+            <thead className="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0">
               <tr>
                 <SortableHeader label="Date" column="createdAt" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
                 <SortableHeader label="Patient" column="patientName" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} getSortIcon={getSortIcon} />
@@ -294,7 +294,7 @@ export default function PrescriptionsPage() {
                 return (
                   <tr
                     key={rx.id}
-                    className="hover:bg-slate-50 cursor-pointer transition"
+                    className="hover:bg-blue-50/40 cursor-pointer transition"
                     onClick={() => setSelectedRx(rx)}
                   >
                     {/* Date */}
@@ -410,7 +410,7 @@ export default function PrescriptionsPage() {
 
       {/* Pagination */}
       {!loading && pagination.pages > 1 && (
-        <div className="bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div className="panel mt-4 px-6 py-4 flex items-center justify-between">
           <div className="text-sm text-slate-600">
             Showing {((pagination.page - 1) * 50) + 1}-{Math.min(pagination.page * 50, pagination.total)} of {pagination.total}
           </div>
@@ -477,13 +477,13 @@ function FilterDropdown({
   
   return (
     <div className="relative inline-block">
-      <label className="absolute -top-1.5 left-2 px-1 bg-white text-[10px] font-medium text-black z-10">
+      <label className="absolute -top-1.5 left-3 px-1 bg-white text-[10px] font-medium text-slate-500 z-10">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-2.5 pr-7 py-1.5 border border-slate-300 rounded text-xs text-black appearance-none bg-white hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer transition min-w-[180px]"
+        className="h-9 rounded-lg border border-slate-300 bg-white pl-3 pr-8 text-xs text-slate-700 shadow-sm appearance-none hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition min-w-[180px]"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>

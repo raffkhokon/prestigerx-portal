@@ -176,9 +176,9 @@ export default function PatientsPage() {
   });
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col page-wrap pt-6">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="panel px-6 py-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -189,7 +189,7 @@ export default function PatientsPage() {
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
+            className="modern-button-primary"
           >
             <Plus className="h-4 w-4" />
             Add Patient
@@ -211,9 +211,9 @@ export default function PatientsPage() {
         )}
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden panel mt-4">
         {/* List */}
-        <div className={`${selectedPatient ? 'w-1/2' : 'flex-1'} flex flex-col bg-white border-r border-slate-200 overflow-hidden`}>
+        <div className={`${selectedPatient ? 'w-1/2' : 'flex-1'} flex flex-col bg-white border-r border-slate-200 overflow-hidden rounded-l-2xl`}>
           <div className="p-4 border-b border-slate-100">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -222,7 +222,7 @@ export default function PatientsPage() {
                 placeholder="Search patients..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="modern-input pl-9"
               />
             </div>
           </div>
@@ -272,7 +272,7 @@ export default function PatientsPage() {
 
         {/* Detail Panel */}
         {selectedPatient && (
-          <div className="w-1/2 bg-white overflow-y-auto">
+          <div className="w-1/2 bg-white overflow-y-auto rounded-r-2xl">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-slate-900 text-lg">
@@ -418,9 +418,9 @@ export default function PatientsPage() {
       )}
 
       <style jsx>{`
-        .field-label { display: block; font-size: 0.8125rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem; }
-        .field-input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none; }
-        .field-input:focus { box-shadow: 0 0 0 2px #3b82f6; border-color: transparent; }
+        .field-label { display: block; font-size: 0.8125rem; font-weight: 500; color: #475569; margin-bottom: 0.375rem; }
+        .field-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.75rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; outline: none; background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+        .field-input:focus { box-shadow: 0 0 0 4px rgba(59,130,246,.14); border-color: #3b82f6; }
       `}</style>
     </div>
   );

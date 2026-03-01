@@ -47,8 +47,8 @@ export default function SalesPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="border-b border-slate-200 px-6 py-4">
+    <div className="h-full flex flex-col page-wrap pt-6">
+      <div className="panel px-6 py-5">
         <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <DollarSign className="h-5 w-5 text-blue-600" />
           Sales Ledger (PHI-safe)
@@ -56,9 +56,9 @@ export default function SalesPage() {
         <p className="text-sm text-slate-500 mt-0.5">Only prescription ID + financial/order metadata</p>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto panel mt-4">
         <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0">
             <tr>
               {['Prescription ID', 'Clinic', 'Pharmacy', 'Amount', 'Payment', 'Order', 'Date'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>

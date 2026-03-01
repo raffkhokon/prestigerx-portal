@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Hospital, Plus, Search, Loader2, X, CheckCircle2 } from 'lucide-react';
+import { Hospital, Plus, Search, Loader2, X, CheckCircle2, Pencil } from 'lucide-react';
 import { useAutoDismiss } from '@/lib/useAutoDismiss';
 
 interface Provider {
@@ -11,9 +11,11 @@ interface Provider {
   name: string;
   email?: string;
   npi?: string;
+  dea?: string;
   license?: string;
   phone?: string;
   practice?: string;
+  status?: string;
   createdAt: string;
   clinics?: Array<{ clinic: { id: string; name: string } }>;
 }
@@ -23,9 +25,22 @@ const emptyForm = {
   email: '',
   password: '',
   npi: '',
+  dea: '',
   license: '',
   phone: '',
   practice: '',
+};
+
+const emptyEditForm = {
+  name: '',
+  email: '',
+  password: '',
+  npi: '',
+  dea: '',
+  license: '',
+  phone: '',
+  practice: '',
+  status: 'active',
 };
 
 export default function ProvidersPage() {
@@ -42,6 +57,11 @@ export default function ProvidersPage() {
 
   useAutoDismiss(successMsg, setSuccessMsg);
   useAutoDismiss(errorMsg, setErrorMsg);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editProvider, setEditProvider] = useState<Provider | null>(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [clinics, setClinics] = useState<Array<{ id: string; name: string }>>([]);
@@ -53,7 +73,11 @@ export default function ProvidersPage() {
       const res = await fetch('/api/providers');
       const data = await res.json();
       setProviders(data.data || []);
-    } catch { setErrorMsg('Failed to load'); } finally { setLoading(false); }
+    } catch {
+      setErrorMsg('Failed to load');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -88,6 +112,69 @@ export default function ProvidersPage() {
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Failed to save');
     } finally { setSubmitting(false); }
+  };
+
+  const openEditModal = (provider: Provider) => {
+    setEditProvider(provider);
+    setEditForm({
+      name: provider.name || '',
+      email: provider.email || '',
+      password: '',
+      npi: provider.npi || '',
+      dea: provider.dea || '',
+      license: provider.license || '',
+      phone: provider.phone || '',
+      practice: provider.practice || '',
+      status: provider.status || 'active',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateProvider = async () => {
+    if (!editProvider) return;
+    if (!editForm.name || !editForm.email) {
+      setErrorMsg('Name and email are required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: Record<string, unknown> = {
+        name: editForm.name,
+        email: editForm.email,
+        npi: editForm.npi || null,
+        dea: editForm.dea || null,
+        license: editForm.license || null,
+        phone: editForm.phone || null,
+        practice: editForm.practice || null,
+        status: editForm.status,
+      };
+
+      if (editForm.password?.trim()) {
+        if (editForm.password.trim().length < 8) {
+          throw new Error('Password must be at least 8 characters');
+        }
+        payload.password = editForm.password.trim();
+      }
+
+      const res = await fetch(`/api/providers/${editProvider.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to update provider');
+
+      setSuccessMsg('Provider updated!');
+      setShowEditModal(false);
+      setEditProvider(null);
+      await fetchData();
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Failed to update provider');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openAssignModal = async (provider: Provider) => {
@@ -174,14 +261,14 @@ export default function ProvidersPage() {
   const filtered = providers.filter((p) => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.npi?.includes(search));
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+    <div className="h-full flex flex-col page-wrap pt-6">
+      <div className="panel px-6 py-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Hospital className="h-5 w-5 text-blue-600" />Providers</h1>
             <p className="text-slate-500 text-sm mt-0.5">{providers.length} providers</p>
           </div>
-          <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
+          <button onClick={() => { setForm(emptyForm); setShowForm(true); }} className="modern-button-primary">
             <Plus className="h-4 w-4" />Add Provider
           </button>
         </div>
@@ -189,9 +276,9 @@ export default function ProvidersPage() {
         {errorMsg && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-800 text-sm flex items-center gap-2">{errorMsg}<button onClick={() => setErrorMsg('')} className="ml-auto"><X className="h-3.5 w-3.5" /></button></div>}
       </div>
 
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 flex flex-col panel mt-4 overflow-hidden">
         <div className="p-4 border-b border-slate-100">
-          <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" /><input type="text" placeholder="Search by name or NPI..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+          <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" /><input type="text" placeholder="Search by name or NPI..." value={search} onChange={(e) => setSearch(e.target.value)} className="modern-input pl-9" /></div>
         </div>
 
         {loading ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div> :
@@ -219,12 +306,14 @@ export default function ProvidersPage() {
                         {p.clinics && p.clinics.length > 0 ? p.clinics.map((pc) => pc.clinic.name).join(', ') : 'Unassigned'}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => openAssignModal(p)}
-                          className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition"
-                        >
-                          Assign Clinic
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => openEditModal(p)} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700">
+                            <Pencil className="h-3 w-3" /> Edit
+                          </button>
+                          <button onClick={() => openAssignModal(p)} className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">
+                            Assign Clinic
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -237,14 +326,15 @@ export default function ProvidersPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
             <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">Add Provider</h2><button onClick={() => setShowForm(false)}><X className="h-5 w-5 text-slate-400" /></button></div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
               {[
                 ['Name *', 'name', 'text', 'Dr. Jane Smith'],
                 ['Email *', 'email', 'email', 'doctor@clinic.com'],
                 ['Password *', 'password', 'password', 'At least 8 characters'],
                 ['NPI Number', 'npi', 'text', '1234567890'],
+                ['DEA Number', 'dea', 'text', ''],
                 ['License', 'license', 'text', ''],
                 ['Phone', 'phone', 'tel', ''],
                 ['Practice', 'practice', 'text', ''],
@@ -258,6 +348,45 @@ export default function ProvidersPage() {
             <div className="p-5 border-t flex gap-3 justify-end">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
               <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}Add Provider</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editProvider && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b flex items-center justify-between"><h2 className="font-bold text-slate-900">Edit Provider</h2><button onClick={() => { setShowEditModal(false); setEditProvider(null); }}><X className="h-5 w-5 text-slate-400" /></button></div>
+            <div className="p-5 space-y-4 overflow-y-auto">
+              {[
+                ['Name *', 'name', 'text', ''],
+                ['Email *', 'email', 'email', ''],
+                ['NPI Number', 'npi', 'text', ''],
+                ['DEA Number', 'dea', 'text', ''],
+                ['License', 'license', 'text', ''],
+                ['Phone', 'phone', 'tel', ''],
+                ['Practice', 'practice', 'text', ''],
+              ].map(([label, key, type, placeholder]) => (
+                <div key={key}>
+                  <label className="field-label">{label}</label>
+                  <input type={type} value={(editForm as Record<string, string>)[key]} onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))} className="field-input" placeholder={placeholder} />
+                </div>
+              ))}
+              <div>
+                <label className="field-label">Status</label>
+                <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))} className="field-input">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div>
+                <label className="field-label">New Password (optional)</label>
+                <input type="password" value={editForm.password} onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))} className="field-input" placeholder="Leave blank to keep current password" />
+              </div>
+            </div>
+            <div className="p-5 border-t flex gap-3 justify-end">
+              <button onClick={() => { setShowEditModal(false); setEditProvider(null); }} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
+              <button onClick={handleUpdateProvider} disabled={submitting} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">{submitting && <Loader2 className="h-4 w-4 animate-spin" />}Save Changes</button>
             </div>
           </div>
         </div>
@@ -308,7 +437,7 @@ export default function ProvidersPage() {
           </div>
         </div>
       )}
-      <style jsx>{`.field-label{display:block;font-size:.8125rem;font-weight:500;color:#374151;margin-bottom:.375rem}.field-input{width:100%;border:1px solid #d1d5db;border-radius:.5rem;padding:.5rem .75rem;font-size:.875rem;outline:none}.field-input:focus{box-shadow:0 0 0 2px #3b82f6;border-color:transparent}`}</style>
+      <style jsx>{`.field-label{display:block;font-size:.8125rem;font-weight:500;color:#475569;margin-bottom:.375rem}.field-input{width:100%;border:1px solid #cbd5e1;border-radius:.75rem;padding:.625rem .75rem;font-size:.875rem;outline:none;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.04)}.field-input:focus{box-shadow:0 0 0 4px rgba(59,130,246,.14);border-color:#3b82f6}`}</style>
     </div>
   );
 }
