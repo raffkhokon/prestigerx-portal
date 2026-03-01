@@ -112,27 +112,24 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   if (status === 'unauthenticated') return null;
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 flex flex-col flex-shrink-0 overflow-y-auto">
-        {/* Logo */}
-        <div className="p-5 border-b border-slate-700/50">
+    <div className="app-shell flex h-screen overflow-hidden">
+      <aside className="w-72 bg-slate-950 text-slate-200 flex flex-col flex-shrink-0 overflow-y-auto">
+        <div className="p-5 border-b border-slate-800/80">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-500 rounded-lg p-2">
-              <Pill className="h-5 w-5 text-white" />
+            <div className="rounded-xl bg-blue-500/20 p-2.5 ring-1 ring-blue-400/30">
+              <Pill className="h-5 w-5 text-blue-300" />
             </div>
             <div>
-              <p className="text-white font-bold text-lg leading-tight">PrestigeScripts</p>
+              <p className="text-white font-semibold text-base leading-tight">PrestigeScripts</p>
               <p className="text-slate-400 text-xs">Pharmacy Portal</p>
             </div>
           </div>
         </div>
 
-        {/* User Info */}
-        <div className="px-4 py-3 border-b border-slate-700/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <User className="h-4 w-4 text-blue-400" />
+        <div className="px-4 py-4 border-b border-slate-800/80">
+          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-3 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-blue-500/20 flex items-center justify-center ring-1 ring-blue-400/30">
+              <User className="h-4 w-4 text-blue-300" />
             </div>
             <div className="min-w-0">
               <p className="text-white text-sm font-medium truncate">{session?.user?.name}</p>
@@ -140,15 +137,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 {session?.user?.clinicName || session?.user?.role?.toUpperCase()}
               </p>
             </div>
-            {isAdmin && (
-              <div className="ml-auto">
-                <ShieldCheck className="h-4 w-4 text-blue-400" aria-label="Admin" />
-              </div>
-            )}
+            {isAdmin && <ShieldCheck className="h-4 w-4 text-emerald-400 ml-auto" aria-label="Admin" />}
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 py-4 px-3 space-y-6">
           {navSections.map((section) => {
             if (section.adminOnly && !isAdmin) return null;
@@ -169,25 +161,25 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
             return (
               <div key={section.title}>
-                <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest px-3 mb-2">
+                <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-[0.14em] px-3 mb-2">
                   {section.title}
                 </p>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {visibleItems.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
                       <Link
                         key={`${item.href}-${item.label}`}
                         href={item.href}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                           isActive
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
+                            : 'text-slate-300 hover:text-white hover:bg-slate-900'
                         }`}
                       >
                         {item.icon}
                         <span className="flex-1">{item.label}</span>
-                        {isActive && <ChevronRight className="h-3 w-3 opacity-60" />}
+                        {isActive && <ChevronRight className="h-3 w-3 opacity-70" />}
                       </Link>
                     );
                   })}
@@ -197,25 +189,19 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-3 border-t border-slate-700/50">
+        <div className="p-3 border-t border-slate-800/80">
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all w-full"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-red-300 hover:bg-red-500/10 transition-all w-full"
           >
             <LogOut className="h-4 w-4" />
             Sign Out
           </button>
-          <p className="text-slate-600 text-xs px-3 mt-2 text-center">
-            Auto-logout after 15 min inactivity
-          </p>
+          <p className="text-slate-500 text-[11px] px-3 mt-2 text-center">Auto-logout after 15 min inactivity</p>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <main className="flex-1 overflow-y-auto bg-slate-50">{children}</main>
     </div>
   );
 }

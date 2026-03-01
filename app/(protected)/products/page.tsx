@@ -127,14 +127,14 @@ export default function ProductsPage() {
   });
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+    <div className="h-full flex flex-col page-wrap pt-6">
+      <div className="panel px-6 py-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Package className="h-5 w-5 text-blue-600" />Products</h1>
             <p className="text-slate-500 text-sm mt-0.5">{products.length} products</p>
           </div>
-          <button onClick={() => { setEditProductId(null); setForm(emptyForm); setShowForm(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition">
+          <button onClick={() => { setEditProductId(null); setForm(emptyForm); setShowForm(true); }} className="modern-button-primary">
             <Plus className="h-4 w-4" />Add Product
           </button>
         </div>
@@ -142,9 +142,9 @@ export default function ProductsPage() {
         {errorMsg && <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-800 text-sm">{errorMsg}</div>}
       </div>
 
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 flex flex-col panel mt-4 overflow-hidden">
         <div className="p-4 border-b border-slate-100">
-          <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" /><input type="text" placeholder="Search products..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+          <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" /><input type="text" placeholder="Search products..." value={search} onChange={(e) => setSearch(e.target.value)} className="modern-input pl-9" /></div>
         </div>
 
         {loading ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div> :
@@ -236,7 +236,7 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
-      <style jsx>{`.field-label{display:block;font-size:.8125rem;font-weight:500;color:#374151;margin-bottom:.375rem}.field-input{width:100%;border:1px solid #d1d5db;border-radius:.5rem;padding:.5rem .75rem;font-size:.875rem;outline:none}.field-input:focus{box-shadow:0 0 0 2px #3b82f6;border-color:transparent}`}</style>
+      <style jsx>{`.field-label{display:block;font-size:.8125rem;font-weight:500;color:#475569;margin-bottom:.375rem}.field-input{width:100%;border:1px solid #cbd5e1;border-radius:.75rem;padding:.625rem .75rem;font-size:.875rem;outline:none;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.04)}.field-input:focus{box-shadow:0 0 0 4px rgba(59,130,246,.14);border-color:#3b82f6}`}</style>
     </div>
   );
 }

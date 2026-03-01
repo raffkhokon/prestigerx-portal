@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --sidebar-bg: #0f172a;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --sidebar-bg: #020617;
   --sidebar-text: #94a3b8;
   --sidebar-active: #3b82f6;
-  --primary: #3b82f6;
+  --primary: #2563eb;
   --primary-dark: #1d4ed8;
 }
 
@@ -27,7 +27,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Default dark text for form inputs (allows override with text-white, etc.) */
@@ -70,4 +70,36 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.app-shell {
+  @apply min-h-screen bg-transparent;
+}
+
+.page-wrap {
+  @apply px-6 py-6 lg:px-8;
+}
+
+.panel {
+  @apply rounded-2xl border border-slate-200/80 bg-white/92 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur;
+}
+
+.panel-muted {
+  @apply rounded-xl border border-slate-200 bg-slate-50/80;
+}
+
+.modern-input {
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20;
+}
+
+.modern-button-primary {
+  @apply inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99];
+}
+
+.modern-button-secondary {
+  @apply inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[0.99];
+}
+
+.interactive-lift {
+  @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)];
 }
