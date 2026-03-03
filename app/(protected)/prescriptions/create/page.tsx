@@ -55,6 +55,8 @@ export default function CreatePrescriptionPage() {
   const [assignedClinics, setAssignedClinics] = useState<any[]>([]);
   const [pharmacies, setPharmacies] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [offerPriceLoading, setOfferPriceLoading] = useState(false);
+  const [offerPriceError, setOfferPriceError] = useState('');
   const [form, setForm] = useState<FormData>({
     patientId: '',
     patientName: '',
@@ -115,6 +117,26 @@ export default function CreatePrescriptionPage() {
       .then((data) => setProducts(data.data || []))
       .catch((error) => console.error('Failed to fetch products:', error));
   }, [form.pharmacyId]);
+
+  useEffect(() => {
+    if (!form.clinicId || !form.pharmacyId || !form.productId) return;
+
+    setOfferPriceLoading(true);
+    setOfferPriceError('');
+    fetch(`/api/pricing/offer?clinicId=${form.clinicId}&pharmacyId=${form.pharmacyId}&productId=${form.productId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const offered = data?.data?.offeredPrice;
+        if (typeof offered === 'number') {
+          setForm((prev) => ({ ...prev, amount: offered }));
+        } else if (session?.user?.role === 'provider') {
+          setOfferPriceError('No clinic offer price configured for this medication. Ask sales/admin to set Offer Price.');
+          setForm((prev) => ({ ...prev, amount: 0 }));
+        }
+      })
+      .catch(() => setOfferPriceError('Failed to load clinic offer price'))
+      .finally(() => setOfferPriceLoading(false));
+  }, [form.clinicId, form.pharmacyId, form.productId, session?.user?.role]);
 
   const fetchPatients = async () => {
     try {
@@ -199,7 +221,7 @@ export default function CreatePrescriptionPage() {
       case 2: // Medication
         return form.pharmacyId && form.productId && form.medicationName && form.medicationStrength && form.quantity > 0;
       case 3: // Review
-        return true;
+        return form.amount > 0;
       default:
         return false;
     }
@@ -435,7 +457,7 @@ export default function CreatePrescriptionPage() {
                       {product.name}
                       {product.medicationStrength ? ` ${product.medicationStrength}` : ''}
                       {product.medicationForm ? ` (${product.medicationForm})` : ''}
-                      {typeof product.price === 'number' ? ` — $${product.price.toFixed(2)}` : ''}
+                      {session?.user?.role === 'admin' && typeof product.price === 'number' ? ` — $${product.price.toFixed(2)}` : ''}
                     </option>
                   ))}
                 </select>
@@ -552,7 +574,7 @@ export default function CreatePrescriptionPage() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Amount (USD)
+                  {session?.user?.role === 'admin' ? 'Amount (USD)' : 'Clinic Offer Price (USD)'}
                 </label>
                 <input
                   type="number"
@@ -560,8 +582,14 @@ export default function CreatePrescriptionPage() {
                   step="0.01"
                   value={form.amount}
                   onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={session?.user?.role !== 'admin'}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-600"
                 />
+                {offerPriceLoading && <p className="text-xs text-slate-500 mt-1">Loading clinic offer price…</p>}
+                {offerPriceError && <p className="text-xs text-red-600 mt-1">{offerPriceError}</p>}
+                {session?.user?.role !== 'admin' && !offerPriceError && !offerPriceLoading && (
+                  <p className="text-xs text-slate-500 mt-1">Price is set by Sales catalog for this clinic.</p>
+                )}
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">

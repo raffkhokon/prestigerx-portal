@@ -35,7 +35,9 @@ model User {
   manager      User?      @relation("SalesManagerToReps", fields: [managerId], references: [id])
   reps         User[]     @relation("SalesManagerToReps")
   managedClinics Clinic[] @relation("SalesRepClinics")
-  
+  pricingFloors SalesRepPricingFloor[]
+  accountCatalogPrices AccountCatalogPrice[]
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
@@ -114,6 +116,8 @@ model Pharmacy {
   prescriptions        Prescription[]
   products             Product[]
   productMappings      PharmacyProductMapping[]
+  salesRepPricingFloors SalesRepPricingFloor[]
+  accountCatalogPrices AccountCatalogPrice[]
 }
 
 model ClinicPharmacy {
@@ -211,6 +215,12 @@ model Prescription {
   
   // Billing
   amount              Float                @default(0)
+  pricingSource       String?              // catalog_offer | manual | base
+  catalogPriceId      String?
+  basePriceSnapshot   Float?
+  floorPriceSnapshot  Float?
+  offerPriceSnapshot  Float?
+  priceLockedAt       DateTime?
   paymentStatus       String               @default("pending")
   
   // Order Status
@@ -256,6 +266,8 @@ model Product {
 
   // Relationships
   pharmacyMappings   PharmacyProductMapping[]
+  salesRepPricingFloors SalesRepPricingFloor[]
+  accountCatalogPrices AccountCatalogPrice[]
 
   @@index([pharmacyId])
 }
@@ -342,4 +354,48 @@ model CommissionLedger {
   @@index([salesRepId])
   @@index([salesManagerId])
   @@index([status])
+}
+
+model SalesRepPricingFloor {
+  id          String   @id @default(cuid())
+  salesRepId  String
+  pharmacyId  String
+  productId   String
+  floorPrice  Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  salesRep    User     @relation(fields: [salesRepId], references: [id], onDelete: Cascade)
+  pharmacy    Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([salesRepId, pharmacyId, productId])
+  @@index([salesRepId])
+  @@index([pharmacyId])
+  @@index([productId])
+}
+
+model AccountCatalogPrice {
+  id          String   @id @default(cuid())
+  scopeType   String   // clinic | prescriber
+  scopeId     String
+  salesRepId  String
+  pharmacyId  String
+  productId   String
+  offeredPrice Float
+  floorPriceSnapshot Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  salesRep    User     @relation(fields: [salesRepId], references: [id], onDelete: Cascade)
+  pharmacy    Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([scopeType, scopeId, salesRepId, pharmacyId, productId])
+  @@index([scopeType, scopeId])
+  @@index([salesRepId])
+  @@index([pharmacyId])
+  @@index([productId])
 }
