@@ -92,23 +92,28 @@ model Pharmacy {
   address              String?
   status               String           @default("active")
   supportedMedications String[]         @default([])
-  
+
   // API Integration Configuration
   apiUrl               String? // External pharmacy API endpoint
   apiKey               String? // Encrypted API key
   apiEnabled           Boolean          @default(false)
-  
+
+  // Identifier strategy (pharmacy-specific)
+  requiresSku          Boolean          @default(false)
+  identifierType       String           @default("name") // name, sku, ndc, custom
+
   // Webhook Configuration
   webhookUrl           String? // Our webhook endpoint they should call
   webhookSecret        String? // Secret for HMAC verification
-  
+
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
-  
+
   // Relationships
   clinics              ClinicPharmacy[]
   prescriptions        Prescription[]
   products             Product[]
+  productMappings      PharmacyProductMapping[]
 }
 
 model ClinicPharmacy {
@@ -249,7 +254,30 @@ model Product {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  // Relationships
+  pharmacyMappings   PharmacyProductMapping[]
+
   @@index([pharmacyId])
+}
+
+model PharmacyProductMapping {
+  id               String   @id @default(cuid())
+  pharmacyId       String
+  productId        String?
+  localProductName String
+  externalSku      String?
+  externalNdc      String?
+  externalCode     String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  pharmacy         Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  product          Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([pharmacyId])
+  @@index([productId])
+  @@unique([pharmacyId, localProductName])
 }
 
 model AuditLog {
