@@ -11,7 +11,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (['sales_rep', 'sales_manager'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const pharmacies = await prisma.pharmacy.findMany({
+        where: { status: 'active' },
+        orderBy: { name: 'asc' },
+      });
+      return NextResponse.json({ data: pharmacies });
     }
 
     const { searchParams } = new URL(req.url);
