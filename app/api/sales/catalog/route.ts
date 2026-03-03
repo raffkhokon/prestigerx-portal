@@ -122,7 +122,10 @@ export async function PUT(req: NextRequest) {
       }
 
       const floor = floors.get(item.productId);
-      if (floor != null && item.offeredPrice < floor) {
+      if (floor == null) {
+        return NextResponse.json({ error: `Missing rep floor price for product ${item.productId}` }, { status: 400 });
+      }
+      if (item.offeredPrice < floor) {
         return NextResponse.json({ error: `Offered price below floor for product ${item.productId}` }, { status: 400 });
       }
     }

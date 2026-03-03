@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { DollarSign, Loader2 } from 'lucide-react';
+import { DollarSign, Loader2, TrendingUp, Receipt } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface SalesRow {
@@ -16,7 +16,7 @@ interface SalesRow {
   pharmacy?: { id: string; name: string } | null;
 }
 
-interface Clinic { id: string; name: string }
+interface Clinic { id: string; name: string; salesRepId?: string | null; salesRep?: { id: string; name: string } | null }
 interface Pharmacy { id: string; name: string }
 interface CatalogRow {
   productId: string;
@@ -26,6 +26,13 @@ interface CatalogRow {
   basePrice: number;
   floorPrice: number | null;
   offeredPrice: number | null;
+}
+
+interface Rollups {
+  kpis: { orders: number; revenue: number; profit: number; avgMarginPct: number };
+  byRep: Array<{ repId: string; repName: string; orders: number; revenue: number; profit: number }>;
+  byClinic: Array<{ clinicId: string; clinicName: string; orders: number; revenue: number; profit: number }>;
+  byPharmacy: Array<{ pharmacyId: string; pharmacyName: string; orders: number; revenue: number; profit: number }>;
 }
 
 export default function SalesPage() {
@@ -42,6 +49,8 @@ export default function SalesPage() {
   const [catalogRows, setCatalogRows] = useState<CatalogRow[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingFloors, setSavingFloors] = useState(false);
+  const [rollups, setRollups] = useState<Rollups | null>(null);
 
   const role = session?.user?.role;
   const canView = role === 'admin' || role === 'sales_manager' || role === 'sales_rep';
@@ -57,11 +66,14 @@ export default function SalesPage() {
       fetch('/api/sales/prescriptions?limit=50', { cache: 'no-store' }).then((res) => res.json()),
       fetch('/api/clinics', { cache: 'no-store' }).then((res) => res.json()),
       fetch('/api/pharmacies', { cache: 'no-store' }).then((res) => res.json()),
+      fetch('/api/sales/rollups', { cache: 'no-store' }).then((res) => res.json()),
     ])
-      .then(([ledgerData, clinicsData, pharmacyData]) => {
+      .then(([ledgerData, clinicsData, pharmacyData, rollupData]) => {
         setRows(ledgerData.data || []);
-        setClinics((clinicsData.data || []).map((c: any) => ({ id: c.id, name: c.name })));
+        setClinics((clinicsData.data || []).map((c: any) => ({ id: c.id, name: c.name, salesRepId: c.salesRepId, salesRep: c.salesRep ? { id: c.salesRep.id, name: c.salesRep.name } : null })));
+
         setPharmacies((pharmacyData.data || []).map((p: any) => ({ id: p.id, name: p.name })));
+        setRollups(rollupData || null);
       })
       .finally(() => setLoading(false));
   }, [status, canView, router]);
@@ -79,6 +91,8 @@ export default function SalesPage() {
       .finally(() => setCatalogLoading(false));
   }, [clinicId, pharmacyId]);
 
+  const selectedClinic = useMemo(() => clinics.find((c) => c.id === clinicId) || null, [clinics, clinicId]);
+  const canManageFloors = role === 'admin' || role === 'sales_manager';
   const dirtyCount = useMemo(() => catalogRows.filter((r) => r.offeredPrice != null).length, [catalogRows]);
 
   const saveCatalog = async () => {
@@ -96,6 +110,29 @@ export default function SalesPage() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveFloors = async () => {
+    if (!canManageFloors || !selectedClinic?.salesRepId || !pharmacyId) return;
+    setSavingFloors(true);
+    try {
+      const items = catalogRows
+        .filter((r) => r.floorPrice != null)
+        .map((r) => ({
+          salesRepId: selectedClinic.salesRepId,
+          pharmacyId,
+          productId: r.productId,
+          floorPrice: Number(r.floorPrice),
+        }));
+
+      await fetch('/api/sales/floors', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+    } finally {
+      setSavingFloors(false);
     }
   };
 
@@ -124,6 +161,57 @@ export default function SalesPage() {
         </div>
       </div>
 
+      <div className="panel mt-4 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Paid Orders</p>
+            <p className="text-lg font-semibold text-slate-900 flex items-center gap-2"><Receipt className="h-4 w-4 text-blue-600" />{rollups?.kpis?.orders ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Revenue</p>
+            <p className="text-lg font-semibold text-slate-900">{formatCurrency(rollups?.kpis?.revenue ?? 0)}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Profit (Offer - Floor)</p>
+            <p className="text-lg font-semibold text-emerald-700">{formatCurrency(rollups?.kpis?.profit ?? 0)}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs text-slate-500">Avg Margin</p>
+            <p className="text-lg font-semibold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-emerald-600" />{(rollups?.kpis?.avgMarginPct ?? 0).toFixed(1)}%</p>
+          </div>
+        </div>
+      </div>
+
+      {role !== 'sales_rep' && rollups && (
+        <div className="panel mt-4 p-4">
+          <h3 className="text-sm font-semibold text-slate-800 mb-2">Team Rollups</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-xs text-slate-500 mb-2">By Rep</p>
+              <div className="space-y-1">
+                {rollups.byRep.slice(0, 5).map((r) => (
+                  <div key={r.repId} className="flex items-center justify-between">
+                    <span>{r.repName}</span>
+                    <span className="font-medium">{formatCurrency(r.profit)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-xs text-slate-500 mb-2">By Clinic</p>
+              <div className="space-y-1">
+                {rollups.byClinic.slice(0, 5).map((c) => (
+                  <div key={c.clinicId} className="flex items-center justify-between">
+                    <span>{c.clinicName}</span>
+                    <span className="font-medium">{formatCurrency(c.revenue)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === 'ledger' ? (
         <div className="flex-1 overflow-auto panel mt-4">
           <table className="w-full">
@@ -151,7 +239,12 @@ export default function SalesPage() {
         </div>
       ) : (
         <div className="panel mt-4 p-4 space-y-4 overflow-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-1">
+            <p><strong>Pricing columns:</strong> Base = admin baseline. Rep/Manager Floor = internal minimum. Offer Price = clinic-facing price.</p>
+            <p><strong>Visibility:</strong> clinic/provider only see Offer Price. Base/Floor are sales/admin only.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <select value={clinicId} onChange={(e) => setClinicId(e.target.value)} className="field-input">
               <option value="">Select clinic</option>
               {clinics.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -161,9 +254,18 @@ export default function SalesPage() {
               {pharmacies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <button onClick={saveCatalog} disabled={saving || !dirtyCount} className="bg-blue-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">
-              {saving ? 'Saving...' : `Save ${dirtyCount} price(s)`}
+              {saving ? 'Saving...' : `Save ${dirtyCount} offer price(s)`}
             </button>
+            {canManageFloors ? (
+              <button onClick={saveFloors} disabled={savingFloors || !selectedClinic?.salesRepId} className="bg-slate-800 text-white rounded-lg px-4 py-2 disabled:opacity-50">
+                {savingFloors ? 'Saving...' : 'Save floor prices'}
+              </button>
+            ) : <div />}
           </div>
+
+          {selectedClinic && (
+            <p className="text-xs text-slate-600">Rep for this clinic: <span className="font-medium">{selectedClinic.salesRep?.name || 'Unassigned'}</span></p>
+          )}
 
           {catalogLoading ? (
             <div className="py-10 text-center text-slate-500">Loading catalog…</div>
@@ -173,8 +275,8 @@ export default function SalesPage() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Medication</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Base</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Rep Floor</th>
+                    {role === 'admin' && <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Base</th>}
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Rep/Manager Floor</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Offer Price</th>
                   </tr>
                 </thead>
@@ -184,8 +286,25 @@ export default function SalesPage() {
                     return (
                       <tr key={r.productId} className={belowFloor ? 'bg-red-50' : ''}>
                         <td className="px-3 py-2 text-sm text-slate-800">{r.name} {r.strength ? `• ${r.strength}` : ''} {r.form ? `• ${r.form}` : ''}</td>
-                        <td className="px-3 py-2 text-sm">{formatCurrency(r.basePrice || 0)}</td>
-                        <td className="px-3 py-2 text-sm">{r.floorPrice == null ? '—' : formatCurrency(r.floorPrice)}</td>
+                        {role === 'admin' && <td className="px-3 py-2 text-sm">{formatCurrency(r.basePrice || 0)}</td>}
+                        <td className="px-3 py-2 text-sm">
+                          {canManageFloors ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={r.floorPrice ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? null : Number(e.target.value);
+                                setCatalogRows((prev) => prev.map((x) => x.productId === r.productId ? { ...x, floorPrice: val } : x));
+                              }}
+                              className="field-input max-w-[140px]"
+                            />
+                          ) : r.floorPrice == null ? (
+                            <span className="text-amber-700">No floor set</span>
+                          ) : (
+                            formatCurrency(r.floorPrice)
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-sm">
                           <input
                             type="number"

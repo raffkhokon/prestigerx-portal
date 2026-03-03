@@ -50,6 +50,20 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'items are required' }, { status: 400 });
     }
 
+    const productIds = items.map((i) => i.productId);
+    const products = await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, price: true } });
+    const baseByProduct = new Map(products.map((p) => [p.id, p.price || 0]));
+
+    for (const item of items) {
+      const base = baseByProduct.get(item.productId);
+      if (base == null) {
+        return NextResponse.json({ error: `Unknown product ${item.productId}` }, { status: 400 });
+      }
+      if (item.floorPrice < base) {
+        return NextResponse.json({ error: `Floor price cannot be below base price for product ${item.productId}` }, { status: 400 });
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const item of items) {
         if (!item.salesRepId || !item.pharmacyId || !item.productId || !Number.isFinite(item.floorPrice)) continue;

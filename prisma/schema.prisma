@@ -215,6 +215,12 @@ model Prescription {
   
   // Billing
   amount              Float                @default(0)
+  pricingSource       String?              // catalog_offer | manual | base
+  catalogPriceId      String?
+  basePriceSnapshot   Float?
+  floorPriceSnapshot  Float?
+  offerPriceSnapshot  Float?
+  priceLockedAt       DateTime?
   paymentStatus       String               @default("pending")
   
   // Order Status

@@ -264,10 +264,66 @@ export async function POST(req: NextRequest) {
     // Resolve shipping destination server-side for data integrity
     const patient = await prisma.patient.findUnique({ where: { id: body.patientId } });
     const clinic = await prisma.clinic.findUnique({ where: { id: body.clinicId } });
+    const product = await prisma.product.findUnique({ where: { id: body.productId } });
 
-    if (!patient || !clinic) {
-      return NextResponse.json({ error: 'Invalid patient or clinic selection' }, { status: 400 });
+    if (!patient || !clinic || !product) {
+      return NextResponse.json({ error: 'Invalid patient, clinic, or product selection' }, { status: 400 });
     }
+
+    if (!body.pharmacyId) {
+      return NextResponse.json({ error: 'Pharmacy is required for pricing' }, { status: 400 });
+    }
+
+    // Pricing: providers should only use clinic offer price (never base/floor UI)
+    const salesRepId = clinic.salesRepId || undefined;
+    let catalogPrice = null as null | { id: string; offeredPrice: number };
+    let floorPrice = null as number | null;
+
+    if (salesRepId) {
+      const [offer, floor] = await Promise.all([
+        prisma.accountCatalogPrice.findFirst({
+          where: {
+            scopeType: 'clinic',
+            scopeId: clinic.id,
+            salesRepId,
+            pharmacyId: body.pharmacyId,
+            productId: product.id,
+            isActive: true,
+          },
+          select: { id: true, offeredPrice: true },
+          orderBy: { updatedAt: 'desc' },
+        }),
+        prisma.salesRepPricingFloor.findFirst({
+          where: {
+            salesRepId,
+            pharmacyId: body.pharmacyId,
+            productId: product.id,
+            isActive: true,
+          },
+          select: { floorPrice: true },
+          orderBy: { updatedAt: 'desc' },
+        }),
+      ]);
+      catalogPrice = offer;
+      floorPrice = floor?.floorPrice ?? null;
+    }
+
+    if (session.user.role === 'provider' && !catalogPrice) {
+      return NextResponse.json({ error: 'No clinic offer price configured for this medication/pharmacy' }, { status: 400 });
+    }
+
+    const basePrice = product.price || 0;
+    const finalAmount =
+      catalogPrice?.offeredPrice ??
+      (session.user.role === 'admin' ? Number(body.amount || 0) : 0);
+
+    body.amount = finalAmount;
+    body.pricingSource = catalogPrice ? 'catalog_offer' : (session.user.role === 'admin' ? 'manual' : 'base');
+    body.catalogPriceId = catalogPrice?.id;
+    body.basePriceSnapshot = basePrice;
+    body.floorPriceSnapshot = floorPrice;
+    body.offerPriceSnapshot = catalogPrice?.offeredPrice ?? null;
+    body.priceLockedAt = new Date().toISOString();
 
     const decryptedPatient = decryptPHI(patient as unknown as Record<string, unknown>, 'patient') as Record<string, unknown>;
 
@@ -325,6 +381,12 @@ export async function POST(req: NextRequest) {
         providerPractice: encrypted.providerPractice,
         providerId: session.user.id, // Provider who created the prescription
         amount: encrypted.amount || 0,
+        pricingSource: encrypted.pricingSource,
+        catalogPriceId: encrypted.catalogPriceId,
+        basePriceSnapshot: encrypted.basePriceSnapshot,
+        floorPriceSnapshot: encrypted.floorPriceSnapshot,
+        offerPriceSnapshot: encrypted.offerPriceSnapshot,
+        priceLockedAt: encrypted.priceLockedAt ? new Date(String(encrypted.priceLockedAt)) : null,
         paymentStatus: 'pending',
         orderStatus: 'new',
       },
