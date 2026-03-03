@@ -239,10 +239,12 @@ export default function SalesPage() {
         </div>
       ) : (
         <div className="panel mt-4 p-4 space-y-4 overflow-auto">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-1">
-            <p><strong>Pricing columns:</strong> Base = admin baseline. Rep/Manager Floor = internal minimum. Offer Price = clinic-facing price.</p>
-            <p><strong>Visibility:</strong> clinic/provider only see Offer Price. Base/Floor are sales/admin only.</p>
-          </div>
+          {role === 'admin' && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 space-y-1">
+              <p><strong>Pricing columns:</strong> Base = admin baseline. Rep/Manager Floor = internal minimum. Offer Price = clinic-facing price.</p>
+              <p><strong>Visibility:</strong> clinic/provider only see Offer Price. Base/Floor are sales/admin only.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <select value={clinicId} onChange={(e) => setClinicId(e.target.value)} className="field-input">
