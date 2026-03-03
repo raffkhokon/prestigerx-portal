@@ -44,6 +44,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         address: body.address,
         supportedMedications: body.supportedMedications,
         status: body.status,
+        requiresSku: Boolean(body.requiresSku),
+        identifierType: body.identifierType || 'name',
       },
     });
     await logAudit({

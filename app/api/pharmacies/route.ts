@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
         address: body.address,
         supportedMedications: body.supportedMedications || [],
         status: body.status || 'active',
+        requiresSku: Boolean(body.requiresSku),
+        identifierType: body.identifierType || 'name',
       },
     });
 

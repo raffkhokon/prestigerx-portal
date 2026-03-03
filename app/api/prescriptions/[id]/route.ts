@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { encryptPHI, decryptPHI } from '@/lib/encryption';
 import { logPrescriptionAccess } from '@/lib/audit';
 import { isOrderStatus, isPaymentStatus } from '@/lib/statuses';
+import { sendPrescriptionToAssignedPharmacy } from '@/lib/pharmacy-dispatch';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -114,6 +115,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         trackingCarrier: encrypted.trackingCarrier,
       },
     });
+
+    const previousPaymentStatus = existing.paymentStatus;
+    const nextPaymentStatus = String(updated.paymentStatus || '').toLowerCase();
+    const shouldDispatchToPharmacy =
+      previousPaymentStatus !== 'paid' &&
+      nextPaymentStatus === 'paid' &&
+      !!updated.pharmacyId;
+
+    if (shouldDispatchToPharmacy) {
+      try {
+        await sendPrescriptionToAssignedPharmacy(id, {
+          overrideSku: typeof body?.medicationSku === 'string' ? body.medicationSku : undefined,
+        });
+      } catch (dispatchError) {
+        console.error('Pharmacy dispatch failed:', dispatchError);
+      }
+    }
 
     await logPrescriptionAccess(
       session.user.id,

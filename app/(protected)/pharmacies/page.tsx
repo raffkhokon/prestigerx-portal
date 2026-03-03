@@ -16,7 +16,19 @@ interface Pharmacy {
   address?: string;
   status: string;
   supportedMedications: string[];
+  requiresSku?: boolean;
+  identifierType?: 'name' | 'sku' | 'ndc' | 'custom';
   createdAt: string;
+}
+
+interface PharmacyMapping {
+  id?: string;
+  productId?: string;
+  localProductName: string;
+  externalSku?: string;
+  externalNdc?: string;
+  externalCode?: string;
+  isActive?: boolean;
 }
 
 interface Product {
@@ -38,6 +50,8 @@ const emptyForm = {
   address: '',
   supportedMedications: [] as string[],
   status: 'active',
+  requiresSku: false,
+  identifierType: 'name' as 'name' | 'sku' | 'ndc' | 'custom',
 };
 
 export default function PharmaciesPage() {
@@ -61,7 +75,9 @@ export default function PharmaciesPage() {
   useAutoDismiss(successMsg, setSuccessMsg);
   useAutoDismiss(errorMsg, setErrorMsg);
   const [selectedItem, setSelectedItem] = useState<Pharmacy | null>(null);
-  const [panelTab, setPanelTab] = useState<'overview' | 'medications'>('overview');
+  const [panelTab, setPanelTab] = useState<'overview' | 'medications' | 'mapping'>('overview');
+  const [mappings, setMappings] = useState<PharmacyMapping[]>([]);
+  const [mappingSaving, setMappingSaving] = useState(false);
   const [pharmacyProducts, setPharmacyProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productSearch, setProductSearch] = useState('');
@@ -92,14 +108,41 @@ export default function PharmaciesPage() {
   useEffect(() => {
     if (!selectedItem?.id) {
       setPharmacyProducts([]);
+      setMappings([]);
       return;
     }
 
     setProductsLoading(true);
-    fetch(`/api/products?pharmacyId=${selectedItem.id}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => setPharmacyProducts(data.data || []))
-      .catch(() => setPharmacyProducts([]))
+    Promise.all([
+      fetch(`/api/products?pharmacyId=${selectedItem.id}`, { cache: 'no-store' }).then((r) => r.json()),
+      fetch(`/api/pharmacies/${selectedItem.id}/mappings`, { cache: 'no-store' }).then((r) => r.json()),
+    ])
+      .then(([productsData, mappingsData]) => {
+        const products = productsData.data || [];
+        setPharmacyProducts(products);
+
+        const currentMappings: PharmacyMapping[] = mappingsData.data || [];
+        const byName = new Map(currentMappings.map((m: PharmacyMapping) => [m.localProductName, m]));
+
+        const hydrated: PharmacyMapping[] = products.map((p: Product) => {
+          const existing = byName.get(p.name);
+          return {
+            id: existing?.id,
+            productId: p.id,
+            localProductName: p.name,
+            externalSku: existing?.externalSku || '',
+            externalNdc: existing?.externalNdc || '',
+            externalCode: existing?.externalCode || '',
+            isActive: existing?.isActive ?? true,
+          };
+        });
+
+        setMappings(hydrated);
+      })
+      .catch(() => {
+        setPharmacyProducts([]);
+        setMappings([]);
+      })
       .finally(() => setProductsLoading(false));
   }, [selectedItem?.id]);
 
@@ -121,6 +164,8 @@ export default function PharmaciesPage() {
       address: item.address || '',
       supportedMedications: item.supportedMedications || [],
       status: item.status,
+      requiresSku: !!item.requiresSku,
+      identifierType: item.identifierType || 'name',
     });
     setMedInput('');
     setShowForm(true);
@@ -156,6 +201,37 @@ export default function PharmaciesPage() {
 
   const removeMed = (idx: number) => {
     setForm((f) => ({ ...f, supportedMedications: f.supportedMedications.filter((_, i) => i !== idx) }));
+  };
+
+  const updateMappingField = (name: string, field: keyof PharmacyMapping, value: string | boolean) => {
+    setMappings((prev) => prev.map((m) => (m.localProductName === name ? { ...m, [field]: value } : m)));
+  };
+
+  const saveMappings = async () => {
+    if (!selectedItem?.id) return;
+    setMappingSaving(true);
+    try {
+      const payload = mappings.map((m) => ({
+        productId: m.productId,
+        localProductName: m.localProductName,
+        externalSku: m.externalSku || '',
+        externalNdc: m.externalNdc || '',
+        externalCode: m.externalCode || '',
+        isActive: m.isActive ?? true,
+      }));
+
+      const res = await fetch(`/api/pharmacies/${selectedItem.id}/mappings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mappings: payload }),
+      });
+      if (!res.ok) throw new Error('Failed to save mappings');
+      setSuccessMsg('Pharmacy medication mappings saved');
+    } catch {
+      setErrorMsg('Failed to save pharmacy mappings');
+    } finally {
+      setMappingSaving(false);
+    }
   };
 
   const filtered = pharmacies.filter((p) => {
@@ -360,6 +436,12 @@ export default function PharmaciesPage() {
                   >
                     Available Medications ({pharmacyProducts.length})
                   </button>
+                  <button
+                    onClick={() => setPanelTab('mapping')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${panelTab === 'mapping' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    API Mapping
+                  </button>
                 </div>
 
                 {panelTab === 'overview' ? (
@@ -381,7 +463,7 @@ export default function PharmaciesPage() {
                       </div>
                     )}
                   </>
-                ) : (
+                ) : panelTab === 'medications' ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
@@ -442,6 +524,55 @@ export default function PharmaciesPage() {
                       </div>
                     )}
                   </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-slate-600">Map each medication to the pharmacy API identifier (SKU/NDC/code).</p>
+                      {isAdmin && (
+                        <button
+                          onClick={saveMappings}
+                          disabled={mappingSaving}
+                          className="text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg"
+                        >
+                          {mappingSaving ? 'Saving...' : 'Save mappings'}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-[520px] overflow-y-auto border border-slate-200 rounded-xl divide-y">
+                      {mappings.map((m) => (
+                        <div key={m.localProductName} className="p-3 bg-white space-y-2">
+                          <p className="text-sm font-semibold text-slate-900">{m.localProductName}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <input
+                              value={m.externalSku || ''}
+                              onChange={(e) => updateMappingField(m.localProductName, 'externalSku', e.target.value)}
+                              placeholder="External SKU"
+                              className="field-input"
+                              disabled={!isAdmin}
+                            />
+                            <input
+                              value={m.externalNdc || ''}
+                              onChange={(e) => updateMappingField(m.localProductName, 'externalNdc', e.target.value)}
+                              placeholder="External NDC"
+                              className="field-input"
+                              disabled={!isAdmin}
+                            />
+                            <input
+                              value={m.externalCode || ''}
+                              onChange={(e) => updateMappingField(m.localProductName, 'externalCode', e.target.value)}
+                              placeholder="External Code"
+                              className="field-input"
+                              disabled={!isAdmin}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {!mappings.length && (
+                        <div className="p-6 text-sm text-slate-500 text-center">No pharmacy medications found to map.</div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -476,6 +607,23 @@ export default function PharmaciesPage() {
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="field-label">Identifier Type</label>
+                  <select value={form.identifierType} onChange={(e) => setForm((f) => ({ ...f, identifierType: e.target.value as 'name' | 'sku' | 'ndc' | 'custom' }))} className="field-input">
+                    <option value="name">Medication Name</option>
+                    <option value="sku">SKU</option>
+                    <option value="ndc">NDC</option>
+                    <option value="custom">Custom Code</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-700 pb-2">
+                    <input type="checkbox" checked={!!form.requiresSku} onChange={(e) => setForm((f) => ({ ...f, requiresSku: e.target.checked }))} />
+                    Require SKU for API orders
+                  </label>
                 </div>
               </div>
               <div>
