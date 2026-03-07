@@ -97,8 +97,11 @@ export default function PharmaciesPage() {
   }, []);
 
   useEffect(() => {
-    if (['sales_rep', 'sales_manager'].includes(session?.user?.role || '')) {
-      router.replace('/clinics');
+    const role = session?.user?.role || '';
+    if (!role) return;
+
+    if (role !== 'admin') {
+      router.replace(role === 'provider' ? '/dashboard' : '/clinics');
       return;
     }
 
