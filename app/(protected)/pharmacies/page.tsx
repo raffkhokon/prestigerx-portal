@@ -41,6 +41,37 @@ interface Product {
   createdAt?: string;
 }
 
+interface VSDHStatus {
+  client: {
+    configured: boolean;
+    hasCachedToken: boolean;
+    tokenExpiresAt: string | null;
+    tokenMsRemaining: number | null;
+  };
+  dispatch: {
+    totalTracked: number;
+    pending: number;
+    sending: number;
+    sent: number;
+    failed: number;
+    failedRetries: number;
+    lastAttemptAt: string | null;
+  };
+  webhooks: {
+    lastReceivedAt: string | null;
+    note?: string;
+  };
+  recentFailures: Array<{
+    id: string;
+    patientName?: string;
+    clinicName?: string;
+    pharmacyName?: string | null;
+    apiError?: string | null;
+    apiRetryCount?: number;
+    updatedAt: string;
+  }>;
+}
+
 const emptyForm = {
   name: '',
   type: 'compounding',
@@ -82,6 +113,8 @@ export default function PharmaciesPage() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [productSort, setProductSort] = useState<'name' | 'newest' | 'price'>('name');
+  const [vsdhStatus, setVsdhStatus] = useState<VSDHStatus | null>(null);
+  const [vsdhLoading, setVsdhLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -113,6 +146,23 @@ export default function PharmaciesPage() {
       setPanelTab('overview');
     }
   }, [isAdmin, panelTab]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setVsdhStatus(null);
+      return;
+    }
+
+    setVsdhLoading(true);
+    fetch('/api/integrations/vsdh/status', { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load integration status');
+        return res.json();
+      })
+      .then((data) => setVsdhStatus(data))
+      .catch(() => setVsdhStatus(null))
+      .finally(() => setVsdhLoading(false));
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!selectedItem?.id) {
@@ -292,6 +342,10 @@ export default function PharmaciesPage() {
     return a.name.localeCompare(b.name);
   });
 
+  const tokenTtlMinutes = vsdhStatus?.client?.tokenMsRemaining != null
+    ? Math.floor(vsdhStatus.client.tokenMsRemaining / 60000)
+    : null;
+
   return (
     <div className="h-full flex flex-col page-wrap pt-6">
       <div className="panel px-6 py-5">
@@ -310,6 +364,64 @@ export default function PharmaciesPage() {
             </button>
           )}
         </div>
+
+        {isAdmin && (
+          <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-indigo-900">VSDH Integration Status</p>
+              {vsdhLoading && <span className="text-xs text-indigo-700">Refreshing...</span>}
+            </div>
+
+            {vsdhStatus ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="rounded-lg border border-indigo-200 bg-white px-3 py-2">
+                    <p className="text-[11px] text-slate-500">Auth Config</p>
+                    <p className={`text-sm font-semibold ${vsdhStatus.client.configured ? 'text-emerald-700' : 'text-red-700'}`}>
+                      {vsdhStatus.client.configured ? 'Configured' : 'Missing'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-indigo-200 bg-white px-3 py-2">
+                    <p className="text-[11px] text-slate-500">Token Cache</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {vsdhStatus.client.hasCachedToken ? 'Warm' : 'Cold'}
+                    </p>
+                    {tokenTtlMinutes !== null && <p className="text-[11px] text-slate-500">~{tokenTtlMinutes}m left</p>}
+                  </div>
+                  <div className="rounded-lg border border-indigo-200 bg-white px-3 py-2">
+                    <p className="text-[11px] text-slate-500">Dispatch (Sent/Failed)</p>
+                    <p className="text-sm font-semibold text-slate-900">{vsdhStatus.dispatch.sent} / {vsdhStatus.dispatch.failed}</p>
+                  </div>
+                  <div className="rounded-lg border border-indigo-200 bg-white px-3 py-2">
+                    <p className="text-[11px] text-slate-500">Retry Queue</p>
+                    <p className="text-sm font-semibold text-slate-900">{vsdhStatus.dispatch.failedRetries}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                  <p>Last dispatch: {vsdhStatus.dispatch.lastAttemptAt ? new Date(vsdhStatus.dispatch.lastAttemptAt).toLocaleString() : '—'}</p>
+                  <p>Last webhook: {vsdhStatus.webhooks.lastReceivedAt ? new Date(vsdhStatus.webhooks.lastReceivedAt).toLocaleString() : '—'}</p>
+                </div>
+
+                {vsdhStatus.recentFailures.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <p className="text-xs font-semibold text-red-800 mb-1">Recent Failed Dispatches</p>
+                    <div className="space-y-1">
+                      {vsdhStatus.recentFailures.slice(0, 3).map((f) => (
+                        <p key={f.id} className="text-xs text-red-900 truncate">
+                          {f.patientName || 'Unknown Patient'} • {f.pharmacyName || 'Pharmacy'} • {f.apiError || 'Unknown error'}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-slate-600">Status unavailable right now.</p>
+            )}
+          </div>
+        )}
+
         {successMsg && (
           <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-2 text-green-800 text-sm">
             <CheckCircle2 className="h-4 w-4 text-green-600" />{successMsg}

@@ -35,6 +35,22 @@ type VSState = {
 let tokenState: VSState | null = null;
 let tokenPromise: Promise<string> | null = null;
 
+export function getVSDigitalClientHealth() {
+  const configured = Boolean(
+    process.env.VSDIGITAL_USERNAME || process.env.VSDH_USERNAME
+  ) && Boolean(process.env.VSDIGITAL_PASSWORD || process.env.VSDH_PASSWORD);
+
+  const expiresAt = tokenState?.expiresAt ?? null;
+  const msRemaining = expiresAt ? Math.max(expiresAt - Date.now(), 0) : null;
+
+  return {
+    configured,
+    hasCachedToken: Boolean(tokenState?.accessToken),
+    tokenExpiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+    tokenMsRemaining: msRemaining,
+  };
+}
+
 function getConfig() {
   const baseUrl =
     process.env.VSDIGITAL_BASE_URL ||
