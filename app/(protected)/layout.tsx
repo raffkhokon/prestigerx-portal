@@ -39,7 +39,7 @@ const navSections: Array<{ title: string; adminOnly?: boolean; items: NavItem[] 
       { href: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
       { href: '/prescriptions', label: 'Prescriptions', icon: <FileText className="h-4 w-4" /> },
       { href: '/patients', label: 'Patients', icon: <Users className="h-4 w-4" /> },
-      { href: '/pharmacies', label: 'Pharmacies', icon: <Building2 className="h-4 w-4" />, adminOnly: true },
+      { href: '/pharmacies', label: 'Pharmacies', icon: <Building2 className="h-4 w-4" /> },
     ],
   },
   {
