@@ -62,6 +62,10 @@ export default function VSDHIntegrationPage() {
     ? Math.floor(data.client.tokenMsRemaining / 60000)
     : null;
 
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.prestigewellnesscompany.com';
+  const normalizedBaseUrl = configuredAppUrl.replace(/\/$/, '');
+  const webhookUrl = `${normalizedBaseUrl}/api/webhooks/vsdh`;
+
   return (
     <div className="page-wrap pt-6 space-y-4">
       <div className="panel px-6 py-5 flex items-center justify-between">
@@ -137,7 +141,7 @@ export default function VSDHIntegrationPage() {
               VSDH Webhook Setup (Copy/Paste)
             </h2>
             <div className="space-y-2 text-xs text-slate-700">
-              <p><strong>Webhook URL:</strong> <code>{typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/vsdh` : '/api/webhooks/vsdh'}</code></p>
+              <p><strong>Webhook URL:</strong> <code>{webhookUrl}</code></p>
               <p><strong>Method:</strong> <code>POST</code></p>
               <p><strong>Content-Type:</strong> <code>application/json</code></p>
               <p><strong>Auth Header (recommended):</strong> <code>x-webhook-secret: &lt;YOUR_SECRET&gt;</code></p>
