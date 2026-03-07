@@ -53,6 +53,13 @@ const navSections: Array<{ title: string; adminOnly?: boolean; items: NavItem[] 
     ],
   },
   {
+    title: 'INTEGRATIONS',
+    adminOnly: true,
+    items: [
+      { href: '/integrations/vsdh', label: 'VSDH Status', icon: <ShieldCheck className="h-4 w-4" />, adminOnly: true },
+    ],
+  },
+  {
     title: 'ADMIN',
     adminOnly: true,
     items: [
