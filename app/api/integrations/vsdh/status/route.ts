@@ -24,6 +24,7 @@ export async function GET() {
       failed,
       failedRetries,
       recentAttempts,
+      lastWebhook,
       recentFailures,
     ] = await Promise.all([
       prisma.prescription.count({ where: whereVSD }),
@@ -46,6 +47,11 @@ export async function GET() {
         },
         orderBy: { updatedAt: 'desc' },
         take: 1,
+      }),
+      prisma.auditLog.findFirst({
+        where: { resourceType: 'VSDHWebhook' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
       }),
       prisma.prescription.findMany({
         where: { ...whereVSD, apiStatus: 'failed' },
@@ -81,8 +87,7 @@ export async function GET() {
           null,
       },
       webhooks: {
-        lastReceivedAt: null,
-        note: 'Webhook heartbeat not wired yet',
+        lastReceivedAt: lastWebhook?.createdAt?.toISOString?.() || null,
       },
       recentFailures: recentFailures.map((f) => ({
         id: f.id,
