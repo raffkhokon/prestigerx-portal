@@ -131,9 +131,20 @@ export default function VSDHIntegrationPage() {
             )}
           </div>
 
-          <div className="panel px-6 py-4 text-xs text-slate-600 flex items-start gap-2">
-            <ShieldCheck className="h-4 w-4 mt-0.5 text-indigo-600" />
-            Endpoint for VSDH webhook heartbeat: <code className="ml-1">/api/webhooks/vsdh</code>
+          <div className="panel px-6 py-5">
+            <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-indigo-600" />
+              VSDH Webhook Setup (Copy/Paste)
+            </h2>
+            <div className="space-y-2 text-xs text-slate-700">
+              <p><strong>Webhook URL:</strong> <code>{typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/vsdh` : '/api/webhooks/vsdh'}</code></p>
+              <p><strong>Method:</strong> <code>POST</code></p>
+              <p><strong>Content-Type:</strong> <code>application/json</code></p>
+              <p><strong>Auth Header (recommended):</strong> <code>x-webhook-secret: &lt;YOUR_SECRET&gt;</code></p>
+              <p><strong>Fallback Auth:</strong> <code>Authorization: Bearer &lt;YOUR_SECRET&gt;</code></p>
+              <p><strong>Env var to set:</strong> <code>VSDH_WEBHOOK_SECRET</code> (or <code>VSDIGITAL_WEBHOOK_SECRET</code>)</p>
+              <p className="text-slate-500">Tip: after VSDH sends one test webhook, this page will show “Last webhook received”.</p>
+            </div>
           </div>
         </>
       ) : (
