@@ -19,6 +19,13 @@ type VSDHStatus = {
     failedRetries: number;
     lastAttemptAt: string | null;
   };
+  outbound: {
+    lastCallAt: string | null;
+    lastResult: string | null;
+    lastError: string | null;
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+  };
   webhooks: {
     lastReceivedAt: string | null;
   };
@@ -107,6 +114,22 @@ export default function VSDHIntegrationPage() {
             <div className="panel p-4">
               <p className="text-xs text-slate-500">Dispatch Failed</p>
               <p className="mt-1 text-sm font-semibold text-red-700">{data.dispatch.failed}</p>
+            </div>
+          </div>
+
+          <div className="panel px-6 py-5">
+            <h2 className="font-semibold text-slate-900 mb-3">API Outbound Status</h2>
+            <div className="space-y-2 text-sm text-slate-700">
+              <p>Last API call: {data.outbound.lastCallAt ? new Date(data.outbound.lastCallAt).toLocaleString() : '—'}</p>
+              <p>
+                Last result:{' '}
+                <span className={`font-medium ${data.outbound.lastResult === 'sent' ? 'text-emerald-700' : data.outbound.lastResult === 'failed' ? 'text-red-700' : 'text-slate-700'}`}>
+                  {data.outbound.lastResult || '—'}
+                </span>
+              </p>
+              <p>Last success: {data.outbound.lastSuccessAt ? new Date(data.outbound.lastSuccessAt).toLocaleString() : '—'}</p>
+              <p>Last failure: {data.outbound.lastFailureAt ? new Date(data.outbound.lastFailureAt).toLocaleString() : '—'}</p>
+              <p>Last error: {data.outbound.lastError || '—'}</p>
             </div>
           </div>
 

@@ -24,6 +24,8 @@ export async function GET() {
       failed,
       failedRetries,
       recentAttempts,
+      lastSuccess,
+      lastFailure,
       lastWebhook,
       recentFailures,
     ] = await Promise.all([
@@ -41,12 +43,23 @@ export async function GET() {
         select: {
           id: true,
           apiStatus: true,
+          apiError: true,
           apiSentAt: true,
           apiLastRetry: true,
           updatedAt: true,
         },
         orderBy: { updatedAt: 'desc' },
         take: 1,
+      }),
+      prisma.prescription.findFirst({
+        where: { ...whereVSD, apiStatus: 'sent' },
+        select: { updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      prisma.prescription.findFirst({
+        where: { ...whereVSD, apiStatus: 'failed' },
+        select: { updatedAt: true, apiError: true },
+        orderBy: { updatedAt: 'desc' },
       }),
       prisma.auditLog.findFirst({
         where: { resourceType: 'VSDHWebhook' },
@@ -85,6 +98,17 @@ export async function GET() {
           lastAttempt?.apiLastRetry?.toISOString?.() ||
           lastAttempt?.updatedAt?.toISOString?.() ||
           null,
+      },
+      outbound: {
+        lastCallAt:
+          lastAttempt?.apiSentAt?.toISOString?.() ||
+          lastAttempt?.apiLastRetry?.toISOString?.() ||
+          lastAttempt?.updatedAt?.toISOString?.() ||
+          null,
+        lastResult: lastAttempt?.apiStatus || null,
+        lastError: lastAttempt?.apiError || null,
+        lastSuccessAt: lastSuccess?.updatedAt?.toISOString?.() || null,
+        lastFailureAt: lastFailure?.updatedAt?.toISOString?.() || null,
       },
       webhooks: {
         lastReceivedAt: lastWebhook?.createdAt?.toISOString?.() || null,
