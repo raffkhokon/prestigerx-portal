@@ -97,13 +97,22 @@ export default function PharmaciesPage() {
   }, []);
 
   useEffect(() => {
-    if (['sales_rep', 'sales_manager'].includes(session?.user?.role || '')) {
+    const role = session?.user?.role || '';
+    if (!role) return;
+
+    if (['sales_rep', 'sales_manager'].includes(role)) {
       router.replace('/clinics');
       return;
     }
 
     fetchData();
   }, [fetchData, router, session?.user?.role]);
+
+  useEffect(() => {
+    if (!isAdmin && panelTab === 'mapping') {
+      setPanelTab('overview');
+    }
+  }, [isAdmin, panelTab]);
 
   useEffect(() => {
     if (!selectedItem?.id) {
@@ -113,6 +122,22 @@ export default function PharmaciesPage() {
     }
 
     setProductsLoading(true);
+
+    if (!isAdmin) {
+      fetch(`/api/products?pharmacyId=${selectedItem.id}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((productsData) => {
+          setPharmacyProducts(productsData.data || []);
+          setMappings([]);
+        })
+        .catch(() => {
+          setPharmacyProducts([]);
+          setMappings([]);
+        })
+        .finally(() => setProductsLoading(false));
+      return;
+    }
+
     Promise.all([
       fetch(`/api/products?pharmacyId=${selectedItem.id}`, { cache: 'no-store' }).then((r) => r.json()),
       fetch(`/api/pharmacies/${selectedItem.id}/mappings`, { cache: 'no-store' }).then((r) => r.json()),
@@ -144,7 +169,7 @@ export default function PharmaciesPage() {
         setMappings([]);
       })
       .finally(() => setProductsLoading(false));
-  }, [selectedItem?.id]);
+  }, [isAdmin, selectedItem?.id]);
 
   const openCreate = () => {
     setEditItem(null);
@@ -436,12 +461,14 @@ export default function PharmaciesPage() {
                   >
                     Available Medications ({pharmacyProducts.length})
                   </button>
-                  <button
-                    onClick={() => setPanelTab('mapping')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${panelTab === 'mapping' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                  >
-                    API Mapping
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setPanelTab('mapping')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${panelTab === 'mapping' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                    >
+                      API Mapping
+                    </button>
+                  )}
                 </div>
 
                 {panelTab === 'overview' ? (
